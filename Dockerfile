@@ -4,11 +4,16 @@ WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci --only=production
+# Install both production and development dependencies to build TypeScript
+RUN npm ci
 
 COPY . .
 
+# Build the TypeScript code
 RUN npm run build
+
+# After building, prune dev dependencies to reduce image size
+RUN npm prune --production
 
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S botuser -u 1001
