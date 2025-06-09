@@ -27,10 +27,6 @@ See [DOCKER.md](DOCKER.md) for complete Docker setup instructions.
 
 **Quick Docker start:**
 ```bash
-# Copy and configure environment
-cp .env.example .env
-cp servers.config.json.example servers.config.json
-
 # Edit .env and servers.config.json with your settings
 
 # Start with Docker Compose
@@ -48,13 +44,9 @@ docker-compose up -d
 3. Configure your servers:
 
    **Option 1: Multiple Servers Configuration (Recommended)**
+
    
-   Copy `servers.config.json.example` to `servers.config.json` and configure your servers:
-   ```bash
-   cp servers.config.json.example servers.config.json
-   ```
-   
-   Edit `servers.config.json`:
+   Create `servers.config.json` with the following structure:
    ```json
    [
      {
@@ -86,9 +78,9 @@ docker-compose up -d
    CLIENT_ID=your_discord_application_client_id_here
    ```
 
-   **Option 2: Single Server Configuration (Legacy)**
+   **Option 2: Single Server Configuration**
    
-   Create a `.env` file based on `.env.example`:
+   Create a `.env` file based on below example:
    ```env
    # Discord Bot Configuration
    DISCORD_TOKEN=your_discord_bot_token_here
@@ -145,13 +137,13 @@ List all configured 3x-ui servers and their connection status.
 - `test-connection` (optional): Test connection to all servers (default: false)
 
 ### `/list-inbounds`
-List all inbounds from 3x-ui servers.
+List all inbounds from 3x-ui servers (Requires Administrator Privilege).
 
 **Options:**
 - `server` (optional): Select specific server (shows all servers if not specified)
 
 ### `/add-client`
-Add a new client to a 3x-ui inbound on a specific server.
+Add a new client to a 3x-ui inbound on a specific server (Requires Administrator Privilege).
 
 **Options:**
 - `server` (required): Select the server to add the client to
@@ -163,7 +155,7 @@ Add a new client to a 3x-ui inbound on a specific server.
 - `enabled` (optional): Enable the client (default: true)
 
 ### `/update-client`
-Update an existing client configuration on a specific server.
+Update an existing client configuration on a specific server (Requires Administrator Privilege).
 
 **Options:**
 - `server` (required): Select the server where the client exists
@@ -183,6 +175,8 @@ Get client traffic information and statistics from one or all servers.
 - `server` (optional): Select the server to search (searches all servers if not specified)
 - `email` (optional): Client email to get traffic for
 - `uuid` (optional): Client UUID to get traffic for
+
+*Note: Only User with Administrator Privilage can use the search by email/uuid, other wise the non-Administrator user must be linked to the created user in the 3x-ui panel by using the discord username as email*
 
 *Note: If neither email nor uuid is provided, it will use your Discord username as the email.*
 

@@ -111,29 +111,6 @@ docker-compose exec 3x-ui-bot node -e "console.log('Bot is healthy')"
    docker-compose up -d
    ```
 
-## Troubleshooting
-
-### Bot won't start:
-- Check logs: `docker-compose logs 3x-ui-bot`
-- Verify environment variables in `.env`
-- Ensure `servers.config.json` is valid
-
-### Permission errors:
-- Ensure the bot has proper Discord permissions
-- Check that the `servers.config.json` file exists and is readable
-
-### Memory issues:
-- Adjust memory limits in `docker-compose.yml`
-- Monitor resource usage: `docker stats`
-
-## Production Considerations
-
-1. **Use a reverse proxy** (nginx) if exposing any web endpoints
-2. **Set up log rotation** for the logs directory
-3. **Monitor resource usage** regularly
-4. **Backup your configuration files**
-5. **Use Docker secrets** for sensitive data in production
-
 ## Security Notes
 
 - Never commit `.env` files to version control
