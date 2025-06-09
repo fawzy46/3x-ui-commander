@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  3x-ui-bot:
+    build: .
+    container_name: 3x-ui-discord-bot
+    restart: unless-stopped
+    environment:
+      # Discord Configuration
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - CLIENT_ID=${CLIENT_ID}
+      
+      # Server Configuration (if using environment variables instead of config file)
+      # - API_HOST=${API_HOST}
+      # - API_PORT=${API_PORT}
+      # - API_WEBBASEPATH=${API_WEBBASEPATH}
+      # - API_USERNAME=${API_USERNAME}
+      # - API_PASSWORD=${API_PASSWORD}
+    volumes:
+      # Mount the servers config file
+      - ./servers.config.json:/app/servers.config.json:ro
+      
+      # Mount logs directory (optional)
+      - ./logs:/app/logs
+    
