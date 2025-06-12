@@ -9,7 +9,7 @@ export class GetClientTrafficCommand {
       .setDescription('Get client traffic information from 3x-ui (defaults to your Discord username)')
       .addStringOption(option =>
         option.setName('server')
-          .setDescription('Server ID to search (searches all servers if not specified, use /list-servers to see available servers)')
+          .setDescription('Server ID to search')
           .setRequired(false)
       )
       .addStringOption(option =>

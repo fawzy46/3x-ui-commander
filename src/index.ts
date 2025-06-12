@@ -43,7 +43,7 @@ class XUIBot {
     
     console.log('✅ Bot initialization completed');
   }
-  
+
   private setupCommands() {
     const commands = [
       new AddClientCommand(this.serverManager),
@@ -58,28 +58,44 @@ class XUIBot {
       this.commands.set(command.data.name, command);
     });
   }
-
   private setupEventHandlers() {
     this.client.once('ready', () => {
       console.log(`✅ Bot is ready! Logged in as ${this.client.user?.tag}`);
     });
 
     this.client.on('interactionCreate', async (interaction) => {
-      if (!interaction.isChatInputCommand()) return;
-
-      const command = this.commands.get(interaction.commandName);
-      if (!command) return;
-
       try {
-        await command.execute(interaction);
+        if (interaction.isChatInputCommand()) {
+          const command = this.commands.get(interaction.commandName);
+          if (!command) return;
+
+          await command.execute(interaction);
+        } else if (interaction.isModalSubmit()) {
+          // Handle modal submissions
+          if (interaction.customId === 'add_server_modal') {
+            const manageServersCommand = this.commands.get('manage-servers') as any;
+            if (manageServersCommand && manageServersCommand.handleModalSubmit) {
+              await manageServersCommand.handleModalSubmit(interaction);
+            }
+          }
+        }
       } catch (error) {
-        console.error('Error executing command:', error);
+        console.error('Error handling interaction:', error);
         
-        const errorMessage = 'There was an error while executing this command!';
-        if (interaction.replied || interaction.deferred) {
-          await interaction.followUp({ content: errorMessage, ephemeral: true });
-        } else {
-          await interaction.reply({ content: errorMessage, ephemeral: true });
+        const errorMessage = 'There was an error while processing this interaction!';
+        
+        if (interaction.isChatInputCommand()) {
+          if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({ content: errorMessage, ephemeral: true });
+          } else {
+            await interaction.reply({ content: errorMessage, ephemeral: true });
+          }
+        } else if (interaction.isModalSubmit()) {
+          if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({ content: errorMessage, ephemeral: true });
+          } else {
+            await interaction.reply({ content: errorMessage, ephemeral: true });
+          }
         }
       }
     });

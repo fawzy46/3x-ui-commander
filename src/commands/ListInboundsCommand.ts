@@ -10,7 +10,7 @@ export class ListInboundsCommand {
       .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
       .addStringOption(option =>
         option.setName('server')
-          .setDescription('Server ID for specific server (optional - shows all servers if not specified, use /list-servers to see available servers)')
+          .setDescription('Server ID for specific server')
           .setRequired(false)
       );
   }
