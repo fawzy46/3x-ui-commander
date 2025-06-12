@@ -243,7 +243,6 @@ export class ManageServersCommand {
       throw new Error('This command can only be used in a Discord server');
     }
 
-    // First check if the server exists and belongs to this Discord server (cache-first)
     const server = this.serverManager.validateServerAccess(serverId, discordServerId);
     
     if (!server) {
@@ -270,7 +269,7 @@ export class ManageServersCommand {
 
     if (!discordServerId) {
       throw new Error('This command can only be used in a Discord server');
-    }    // First check if the server exists and belongs to this Discord server (cache-first)
+    }
     const server = this.serverManager.validateServerAccess(serverId, discordServerId);
     
     if (!server) {
