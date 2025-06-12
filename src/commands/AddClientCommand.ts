@@ -5,22 +5,15 @@ import { v4 as uuidv4 } from 'uuid';
 
 export class AddClientCommand {
   public data;
-
   constructor(private serverManager: MultiServerManager) {    
     this.data = new SlashCommandBuilder()
       .setName('add-client')
       .setDescription('Add a new client to a 3x-ui inbound')
-      .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+      .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)      
       .addStringOption(option =>
         option.setName('server')
-          .setDescription('Select the server to add the client to')
+          .setDescription('Server ID to add the client to (use /list-servers to see available servers)')
           .setRequired(true)
-          .addChoices(
-            ...this.serverManager.getServers().map(server => ({
-              name: server.name,
-              value: server.id
-            }))
-          )
       )
       .addIntegerOption(option =>
         option.setName('inbound-id')
@@ -58,6 +51,7 @@ export class AddClientCommand {
     await interaction.deferReply({ ephemeral: true });
 
     try {
+      const guildId = interaction.guildId;
       const serverId = interaction.options.getString('server', true);
       const inboundId = interaction.options.getInteger('inbound-id', true);
       const email = interaction.options.getString('email', true);
@@ -73,6 +67,18 @@ export class AddClientCommand {
           .setColor(0xFF0000)
           .setTitle('❌ Server Not Found')
           .setDescription(`Server with ID '${serverId}' not found`)
+          .setTimestamp();
+
+        await interaction.editReply({ embeds: [errorEmbed] });
+        return;
+      }
+
+      // Check if the command is being used in the correct Discord server
+      if (serverInfo.discordServerId && guildId && serverInfo.discordServerId !== guildId) {
+        const errorEmbed = new EmbedBuilder()
+          .setColor(0xFF0000)
+          .setTitle('❌ Server Access Restricted')
+          .setDescription(`This server can only be managed from its assigned Discord server.`)
           .setTimestamp();
 
         await interaction.editReply({ embeds: [errorEmbed] });

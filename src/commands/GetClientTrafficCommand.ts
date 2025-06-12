@@ -2,21 +2,15 @@ import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, Permiss
 import { MultiServerManager } from '../api/MultiServerManager';
 
 export class GetClientTrafficCommand {
-  public data;
+  public data;  
   constructor(private serverManager: MultiServerManager) {
     this.data = new SlashCommandBuilder()
       .setName('get-traffic')
       .setDescription('Get client traffic information from 3x-ui (defaults to your Discord username)')
       .addStringOption(option =>
         option.setName('server')
-          .setDescription('Select the server to search (searches all servers if not specified)')
+          .setDescription('Server ID to search (searches all servers if not specified, use /list-servers to see available servers)')
           .setRequired(false)
-          .addChoices(
-            ...this.serverManager.getServers().map(server => ({
-              name: server.name,
-              value: server.id
-            }))
-          )
       )
       .addStringOption(option =>
         option.setName('email')
@@ -31,7 +25,10 @@ export class GetClientTrafficCommand {
   }
 
   public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
-    await interaction.deferReply({ ephemeral: true });    try {
+    await interaction.deferReply({ ephemeral: true });    
+    try {
+      const guildId = interaction.guildId;
+      
       // Check if user has administrator permissions
       const member = interaction.member;
       let hasAdminPermissions = false;
@@ -66,6 +63,30 @@ export class GetClientTrafficCommand {
 
           await interaction.editReply({ embeds: [restrictionEmbed] });
           return;
+        }
+      }
+
+      // If a server ID was specified, check if it's linked to this Discord server
+      if (serverId) {
+        const serverInfo = this.serverManager.getServer(serverId);
+        if (serverInfo && serverInfo.discordServerId && guildId && serverInfo.discordServerId !== guildId) {
+          const errorEmbed = new EmbedBuilder()
+            .setColor(0xFF0000)
+            .setTitle('❌ Server Access Restricted')
+            .setDescription(`This server can only be managed from its assigned Discord server.`)
+            .setTimestamp();
+
+          await interaction.editReply({ embeds: [errorEmbed] });
+          return;
+        }      
+      } else {
+        // If no server was specified, filter servers by the current Discord server
+        if (guildId) {
+          const availableServers = await this.serverManager.getServersByDiscordId(guildId);
+          if (availableServers.length > 0) {
+            // Only search servers linked to this Discord server
+            serverId = availableServers[0].id;
+          }
         }
       }
 

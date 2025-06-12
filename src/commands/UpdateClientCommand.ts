@@ -4,7 +4,6 @@ import { Client } from '../types';
 
 export class UpdateClientCommand {
   public data;
-
   constructor(private serverManager: MultiServerManager) {    
     this.data = new SlashCommandBuilder()
       .setName('update-client')
@@ -12,14 +11,8 @@ export class UpdateClientCommand {
       .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
       .addStringOption(option =>
         option.setName('server')
-          .setDescription('Select the server where the client exists')
+          .setDescription('Server ID where the client exists (use /list-servers to see available servers)')
           .setRequired(true)
-          .addChoices(
-            ...this.serverManager.getServers().map(server => ({
-              name: server.name,
-              value: server.id
-            }))
-          )
       )
       .addStringOption(option =>
         option.setName('uuid')
@@ -68,6 +61,7 @@ export class UpdateClientCommand {
     await interaction.deferReply({ ephemeral: true });
 
     try {
+      const guildId = interaction.guildId;
       const serverId = interaction.options.getString('server', true);
       const uuid = interaction.options.getString('uuid', true);
       const inboundId = interaction.options.getInteger('inbound-id', true);
@@ -79,6 +73,18 @@ export class UpdateClientCommand {
           .setColor(0xFF0000)
           .setTitle('❌ Server Not Found')
           .setDescription(`Server with ID '${serverId}' not found`)
+          .setTimestamp();
+
+        await interaction.editReply({ embeds: [errorEmbed] });
+        return;
+      }
+
+      // Check if the command is being used in the correct Discord server
+      if (serverInfo.discordServerId && guildId && serverInfo.discordServerId !== guildId) {
+        const errorEmbed = new EmbedBuilder()
+          .setColor(0xFF0000)
+          .setTitle('❌ Server Access Restricted')
+          .setDescription(`This server can only be managed from its assigned Discord server.`)
           .setTimestamp();
 
         await interaction.editReply({ embeds: [errorEmbed] });

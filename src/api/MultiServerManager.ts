@@ -1,41 +1,51 @@
 import { XUIApiClient } from './XUIApiClient';
 import { ServerConfig, ApiResponse, Inbound, Client, ClientTraffic } from '../types';
-import * as fs from 'fs';
-import * as path from 'path';
+import { DatabaseService } from '../db/DatabaseService';
 
 export class MultiServerManager {
   private servers: Map<string, ServerConfig> = new Map();
   private clients: Map<string, XUIApiClient> = new Map();
+  private dbService: DatabaseService;
+  private initialized: boolean = false;
 
   constructor() {
-    this.loadServerConfigurations();
+    this.dbService = new DatabaseService();
   }
   /**
-   * Load server configurations from JSON file or environment variables
+   * Initialize the manager with database
    */
-  private loadServerConfigurations(): void {
-    // First try to load from servers.config.json file
-    const configPath = path.join(process.cwd(), 'servers.config.json');
+  public async initialize(): Promise<void> {
+    if (this.initialized) return;
     
-    if (fs.existsSync(configPath)) {
-      try {
-        const configFile = fs.readFileSync(configPath, 'utf8');
-        const servers: ServerConfig[] = JSON.parse(configFile);
-        console.log(`🔍 Loading server configurations from ${configPath}`);
+    try {
+      await this.dbService.initialize();
+      await this.loadServerConfigurations();
+      this.initialized = true;
+      console.log('✅ MultiServerManager initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize MultiServerManager:', error);
+      throw error;
+    }
+  }  /**
+   * Load server configurations from database with fallback to environment variables
+   */
+  private async loadServerConfigurations(): Promise<void> {
+    try {
+      // First try to load from database
+      const servers = await this.dbService.getActiveServers();
+      
+      if (servers.length > 0) {
+        console.log(`🔍 Loading ${servers.length} server configurations from database`);
         
         servers.forEach(server => {
-          if (server.isActive) {
-            this.addServer(server);
-          }
+          this.addServer(server);
         });
         
-        if (this.servers.size > 0) {
-          console.log(`✅ Loaded ${this.servers.size} active server(s) from config file`);
-          return;
-        }
-      } catch (error) {
-        console.error('❌ Failed to parse servers.config.json:', error);
+        console.log(`✅ Loaded ${this.servers.size} active server(s) from database`);
+        return;
       }
+    } catch (error) {
+      console.error('❌ Failed to load servers from database:', error);
     }
 
     // Fallback to environment variables approach
@@ -46,14 +56,15 @@ export class MultiServerManager {
         const servers: ServerConfig[] = JSON.parse(serversData);
         console.log('🔍 Loading server configurations from SERVERS_CONFIG environment variable');
         
-        servers.forEach(server => {
+        for (const server of servers) {
           if (server.isActive) {
+            await this.dbService.addServer(server);
             this.addServer(server);
           }
-        });
+        }
         
         if (this.servers.size > 0) {
-          console.log(`✅ Loaded ${this.servers.size} active server(s) from environment variable`);
+          console.log(`✅ Loaded ${this.servers.size} active server(s) from environment variable and saved to database`);
           return;
         }
       } catch (error) {
@@ -62,19 +73,30 @@ export class MultiServerManager {
     }
 
     // Final fallback to single server configuration for backward compatibility
-    console.log('🔍 Using legacy single server configuration from environment variables');
-    const singleServer: ServerConfig = {
-      id: 'default',
-      name: 'Default Server',
-      host: process.env.API_HOST || 'localhost',
-      port: process.env.API_PORT || '2053',
-      webBasePath: process.env.API_WEBBASEPATH || '',
-      username: process.env.API_USERNAME || 'admin',
-      password: process.env.API_PASSWORD || 'admin',
-      isActive: true
-    };
-    this.addServer(singleServer);
-    console.log(`✅ Loaded ${this.servers.size} active server(s) from legacy configuration`);
+    if (process.env.API_HOST && process.env.API_USERNAME && process.env.API_PASSWORD) {
+      console.log('🔍 Using legacy single server configuration from environment variables');
+      const singleServer: ServerConfig = {
+        id: 'default',
+        name: 'Default Server',
+        host: process.env.API_HOST,
+        port: process.env.API_PORT || '2053',
+        webBasePath: process.env.API_WEBBASEPATH || '',
+        username: process.env.API_USERNAME,
+        password: process.env.API_PASSWORD,
+        isActive: true
+      };
+      
+      try {
+        await this.dbService.addServer(singleServer);
+      } catch (error) {
+        console.warn('⚠️ Failed to save legacy server to database:', error);
+      }
+      
+      this.addServer(singleServer);
+      console.log(`✅ Loaded ${this.servers.size} active server(s) from legacy configuration`);
+    } else {
+      console.log('📋 No servers configured. Use the /manage-servers command to add servers.');
+    }
   }
 
   /**
@@ -99,6 +121,48 @@ export class MultiServerManager {
    */
   public getServer(serverId: string): ServerConfig | undefined {
     return this.servers.get(serverId);
+  }  
+  /**
+   * Get server configuration by Discord server ID
+   */
+  public async getServerByDiscordId(discordServerId: string): Promise<ServerConfig | undefined> {
+    if (!this.initialized) await this.initialize();
+    
+    // First check in-memory cache
+    const cachedServer = Array.from(this.servers.values()).find(server => 
+      server.discordServerId === discordServerId
+    );
+    
+    if (cachedServer) return cachedServer;
+    
+    // Fallback to database
+    const dbServer = await this.dbService.getServerByDiscordId(discordServerId);
+    return dbServer || undefined;
+  }
+
+  /**
+   * Get servers associated with a Discord server ID
+   */
+  public async getServersByDiscordId(discordServerId: string): Promise<ServerConfig[]> {
+    if (!this.initialized) await this.initialize();
+    
+    // First check in-memory cache
+    const cachedServers = Array.from(this.servers.values()).filter(server => 
+      server.discordServerId === discordServerId
+    );
+    
+    if (cachedServers.length > 0) return cachedServers;
+    
+    // Fallback to database
+    return await this.dbService.getServersByDiscordId(discordServerId);
+  }
+  /**
+   * Filter servers by Discord server ID
+   * Returns servers associated with the Discord server ID or servers with no Discord ID set
+   */
+  public async filterServersByDiscordId(discordServerId: string | null): Promise<ServerConfig[]> {
+    if (!this.initialized) await this.initialize();
+    return await this.dbService.filterServersByDiscordId(discordServerId);
   }
 
   /**
@@ -118,14 +182,13 @@ export class MultiServerManager {
     }
     return await client.getInbounds();
   }
-
   /**
    * Get inbounds from all servers
    */
   public async getAllInbounds(): Promise<Array<{ serverId: string; serverName: string; result: ApiResponse<Inbound[]> }>> {
     const results = [];
 
-    for (const [serverId, client] of this.clients) {
+    for (const [serverId, client] of Array.from(this.clients.entries())) {
       try {
         const result = await client.getInbounds();
         const server = this.getServer(serverId);
@@ -194,14 +257,13 @@ export class MultiServerManager {
     }
     return await apiClient.getClientTrafficById(uuid);
   }
-
   /**
    * Search for client across all servers by email
    */
   public async findClientByEmail(email: string): Promise<Array<{ serverId: string; serverName: string; result: ApiResponse<ClientTraffic> }>> {
     const results = [];
 
-    for (const [serverId, client] of this.clients) {
+    for (const [serverId, client] of Array.from(this.clients.entries())) {
       try {
         const result = await client.getClientTraffic(email);
         const server = this.getServer(serverId);
@@ -217,14 +279,13 @@ export class MultiServerManager {
 
     return results.filter(r => r.result.success);
   }
-
   /**
    * Search for client across all servers by UUID
    */
   public async findClientByUUID(uuid: string): Promise<Array<{ serverId: string; serverName: string; result: ApiResponse<ClientTraffic[]> }>> {
     const results = [];
 
-    for (const [serverId, client] of this.clients) {
+    for (const [serverId, client] of Array.from(this.clients.entries())) {
       try {
         const result = await client.getClientTrafficById(uuid);
         const server = this.getServer(serverId);
@@ -262,14 +323,13 @@ export class MultiServerManager {
     }
     return await apiClient.resetClientTraffic(inboundId, email);
   }
-
   /**
    * Test connection to all servers
    */
   public async testAllConnections(): Promise<Array<{ serverId: string; serverName: string; success: boolean; error?: string }>> {
     const results = [];
 
-    for (const [serverId, client] of this.clients) {
+    for (const [serverId, client] of Array.from(this.clients.entries())) {
       try {
         await client.getInbounds();
         const server = this.getServer(serverId);
@@ -290,6 +350,85 @@ export class MultiServerManager {
     }
 
     return results;
+  }
+
+  /**
+   * Add a new server to the database and initialize its client
+   */
+  public async addNewServer(config: ServerConfig): Promise<void> {
+    if (!this.initialized) await this.initialize();
+    
+    await this.dbService.addServer(config);
+    if (config.isActive) {
+      this.addServer(config);
+    }
+  }
+
+  /**
+   * Update an existing server in the database
+   */
+  public async updateExistingServer(id: string, config: Partial<ServerConfig>): Promise<void> {
+    if (!this.initialized) await this.initialize();
+    
+    await this.dbService.updateServer(id, config);
+    
+    // Update in-memory cache if the server is loaded
+    const existingServer = this.servers.get(id);
+    if (existingServer) {
+      const updatedServer = { ...existingServer, ...config };
+      this.servers.set(id, updatedServer);
+      
+      // Recreate the client if needed
+      if (config.host || config.port || config.username || config.password || config.webBasePath) {
+        this.clients.delete(id);
+        if (updatedServer.isActive) {
+          const newClient = new XUIApiClient(updatedServer);
+          this.clients.set(id, newClient);
+        }
+      }
+    }
+  }
+
+  /**
+   * Delete a server from the database
+   */
+  public async deleteExistingServer(id: string): Promise<void> {
+    if (!this.initialized) await this.initialize();
+    
+    await this.dbService.deleteServer(id);
+    this.servers.delete(id);
+    this.clients.delete(id);
+  }
+
+  /**
+   * Set server active status
+   */
+  public async setServerActiveStatus(id: string, isActive: boolean): Promise<void> {
+    if (!this.initialized) await this.initialize();
+    
+    await this.dbService.setServerActive(id, isActive);
+    
+    const server = this.servers.get(id);
+    if (server) {
+      server.isActive = isActive;
+      if (!isActive) {
+        this.clients.delete(id);
+      } else {
+        const newClient = new XUIApiClient(server);
+        this.clients.set(id, newClient);
+      }
+    }
+  }
+
+  /**
+   * Refresh servers from database
+   */
+  public async refreshServers(): Promise<void> {
+    if (!this.initialized) await this.initialize();
+    
+    this.servers.clear();
+    this.clients.clear();
+    await this.loadServerConfigurations();
   }
 }
 

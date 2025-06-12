@@ -5,6 +5,7 @@ A Discord bot that automates interactions with multiple 3x-ui REST APIs, allowin
 ## Features
 
 - **Multi-Server Support**: Manage multiple 3x-ui servers from a single bot
+- **Discord Server Restrictions**: Link specific VPN servers to specific Discord servers for enhanced security
 - **Add Client**: Create new clients in 3x-ui inbounds on any server
 - **Update Client**: Modify existing client configurations on specific servers
 - **Get Traffic**: View client traffic statistics across all servers or specific servers
@@ -41,44 +42,24 @@ docker-compose up -d
    npm install
    ```
 
-3. Configure your servers:
+3. **Database Setup:**
 
-   **Option 1: Multiple Servers Configuration (Recommended)**
+   The bot uses SQLite database for server configuration management. The database will be automatically created on first startup at `./data/servers.db`.
 
-   
-   Create `servers.config.json` with the following structure:
-   ```json
-   [
-     {
-       "id": "server1",
-       "name": "Primary Server",
-       "host": "http://your-server1.com",
-       "port": "2053",
-       "webBasePath": "/path1",
-       "username": "admin",
-       "password": "password1",
-       "isActive": true
-     },
-     {
-       "id": "server2", 
-       "name": "Secondary Server",
-       "host": "http://your-server2.com",
-       "port": "2053",
-       "webBasePath": "/path2",
-       "username": "admin",
-       "password": "password2",
-       "isActive": true
-     }
-   ]
-   ```
+4. Configure your servers:   **Option A: Discord Commands (Recommended)**
 
-   Then create your `.env` file with Discord credentials only:
+   After starting the bot, use the `/manage-servers add` command to add your servers directly through Discord. This is the most convenient method for ongoing management.
+
+   **Option B: Environment Variable Configuration**
+
+   Set the `SERVERS_CONFIG` environment variable with a JSON array:
    ```env
    DISCORD_TOKEN=your_discord_bot_token_here
    CLIENT_ID=your_discord_application_client_id_here
+   SERVERS_CONFIG=[{"id":"server1","name":"Primary Server","host":"http://your-server1.com","port":"2053","webBasePath":"/path1","username":"admin","password":"password1","isActive":true,"discordServerId":"123456789012345678"}]
    ```
 
-   **Option 2: Single Server Configuration**
+   > **Note about `discordServerId`**: This optional field allows you to restrict server management to specific Discord servers. When set, commands for this VPN server will only be accessible from the specified Discord server. To get your Discord server ID, enable Developer Mode in Discord settings, then right-click on your server and select "Copy ID".
    
    Create a `.env` file based on below example:
    ```env
@@ -101,8 +82,47 @@ docker-compose up -d
 
 5. Start the bot:
    ```bash
+   npm start   ```
+
+   **Option C: Legacy Single Server Configuration**
+   
+   Create a `.env` file with single server configuration:
+   ```env
+   DISCORD_TOKEN=your_discord_bot_token_here
+   CLIENT_ID=your_discord_application_client_id_here
+   API_HOST=http://your-server.com
+   API_PORT=2053
+   API_WEBBASEPATH=/your-web-path
+   API_USERNAME=admin
+   API_PASSWORD=your_password
+   ```
+
+5. Start the bot:
+   ```bash
    npm start
    ```
+
+## Database Management
+
+The bot uses SQLite database for better performance and reliability. Available commands:
+
+```bash
+# Generate database migrations
+npm run db:generate
+
+# Apply database migrations  
+npm run db:migrate
+
+# Open Drizzle Studio (web-based database browser)
+npm run db:studio
+
+# Test database initialization
+npm run test-init
+```
+
+**Database Location:** `./data/servers.db`
+
+For more details, see [DATABASE_GUIDE.md](DATABASE_GUIDE.md)
 
 ## Development
 

@@ -14,19 +14,21 @@ export class ListServersCommand {
           .setRequired(false)
       );
   }
-
   public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
     await interaction.deferReply({ ephemeral: true });
 
     try {
       const testConnection = interaction.options.getBoolean('test-connection') || false;
-      const servers = this.serverManager.getServers();
+      const guildId = interaction.guildId;
+      
+      // Filter servers by Discord server ID if we're in a guild
+      let servers = await this.serverManager.filterServersByDiscordId(guildId);
 
       if (servers.length === 0) {
         const errorEmbed = new EmbedBuilder()
           .setColor(0xFF0000)
-          .setTitle('❌ No Servers Configured')
-          .setDescription('No active servers found in configuration')
+          .setTitle('❌ No Servers Available')
+          .setDescription('No servers are available for this Discord server')
           .setTimestamp();
 
         await interaction.editReply({ embeds: [errorEmbed] });

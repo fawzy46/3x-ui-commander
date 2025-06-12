@@ -7,4 +7,5 @@ export interface ServerConfig {
   username: string;
   password: string;
   isActive: boolean;
+  discordServerId?: string; // Discord server/guild ID this VPN server is associated with
 }

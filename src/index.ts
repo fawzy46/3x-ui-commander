@@ -6,6 +6,7 @@ import { UpdateClientCommand } from './commands/UpdateClientCommand';
 import { GetClientTrafficCommand } from './commands/GetClientTrafficCommand';
 import { ListServersCommand } from './commands/ListServersCommand';
 import { ListInboundsCommand } from './commands/ListInboundsCommand';
+import { ManageServersCommand } from './commands/ManageServersCommand';
 
 config();
 
@@ -18,7 +19,6 @@ class XUIBot {
   private client: Client;
   private commands: Collection<string, Command>;
   private serverManager: MultiServerManager;
-
   constructor() {
     this.client = new Client({
       intents: [
@@ -29,9 +29,20 @@ class XUIBot {
     this.commands = new Collection();
     this.serverManager = new MultiServerManager();
     
-    this.setupCommands();
     this.setupEventHandlers();
-  }  
+  }
+
+  private async initializeBot() {
+    console.log('🚀 Initializing 3x-ui Discord Bot...');
+    
+    // Initialize the server manager with database
+    await this.serverManager.initialize();
+    
+    // Setup commands after server manager is initialized
+    this.setupCommands();
+    
+    console.log('✅ Bot initialization completed');
+  }
   
   private setupCommands() {
     const commands = [
@@ -39,7 +50,8 @@ class XUIBot {
       new UpdateClientCommand(this.serverManager),
       new GetClientTrafficCommand(this.serverManager),
       new ListServersCommand(this.serverManager),
-      new ListInboundsCommand(this.serverManager)
+      new ListInboundsCommand(this.serverManager),
+      new ManageServersCommand(this.serverManager)
     ];
 
     commands.forEach(command => {
@@ -72,9 +84,11 @@ class XUIBot {
       }
     });
   }
-
   public async start() {
     try {
+      // Initialize the bot with database
+      await this.initializeBot();
+      
       // Register slash commands
       await this.registerCommands();
       

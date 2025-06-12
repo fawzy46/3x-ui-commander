@@ -3,7 +3,6 @@ import { MultiServerManager } from '../api/MultiServerManager';
 
 export class ListInboundsCommand {
   public data;
-
   constructor(private serverManager: MultiServerManager) {    
     this.data = new SlashCommandBuilder()
       .setName('list-inbounds')
@@ -11,14 +10,8 @@ export class ListInboundsCommand {
       .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
       .addStringOption(option =>
         option.setName('server')
-          .setDescription('Select specific server (optional - shows all servers if not specified)')
+          .setDescription('Server ID for specific server (optional - shows all servers if not specified, use /list-servers to see available servers)')
           .setRequired(false)
-          .addChoices(
-            ...this.serverManager.getServers().map(server => ({
-              name: server.name,
-              value: server.id
-            }))
-          )
       );
   }
 
@@ -27,6 +20,7 @@ export class ListInboundsCommand {
 
     try {
       const serverId = interaction.options.getString('server');
+      const guildId = interaction.guildId;
 
       if (serverId) {
         // Get inbounds from specific server
@@ -36,6 +30,18 @@ export class ListInboundsCommand {
             .setColor(0xFF0000)
             .setTitle('❌ Server Not Found')
             .setDescription(`Server with ID '${serverId}' not found`)
+            .setTimestamp();
+
+          await interaction.editReply({ embeds: [errorEmbed] });
+          return;
+        }
+
+        // Check if the command is being used in the correct Discord server
+        if (serverInfo.discordServerId && guildId && serverInfo.discordServerId !== guildId) {
+          const errorEmbed = new EmbedBuilder()
+            .setColor(0xFF0000)
+            .setTitle('❌ Server Access Restricted')
+            .setDescription(`This server can only be managed from its assigned Discord server.`)
             .setTimestamp();
 
           await interaction.editReply({ embeds: [errorEmbed] });
@@ -84,11 +90,20 @@ export class ListInboundsCommand {
           });
         }
 
-        await interaction.editReply({ embeds: [embed] });
-
-      } else {
+        await interaction.editReply({ embeds: [embed] });      } else {
         // Get inbounds from all servers
-        const results = await this.serverManager.getAllInbounds();
+        let servers = await this.serverManager.filterServersByDiscordId(guildId);
+        
+        // Get inbounds only from filtered servers
+        const results = await Promise.all(servers.map(server => 
+          this.serverManager.getInbounds(server.id).then(response => ({ 
+            serverId: server.id, 
+            serverName: server.name,
+            success: response.success,
+            inbounds: response.obj || [],
+            error: response.msg 
+          }))
+        ));
         
         const embed = new EmbedBuilder()
           .setColor(0x00FF00)
@@ -100,19 +115,18 @@ export class ListInboundsCommand {
           embed.addFields({ name: 'No Servers', value: 'No servers available', inline: false });
         } else {
           let totalInbounds = 0;
-          
-          results.forEach((serverResult) => {
-            if (serverResult.result.success && serverResult.result.obj) {
-              const inbounds = serverResult.result.obj;
+            results.forEach((serverResult) => {
+            if (serverResult.success) {
+              const inbounds = serverResult.inbounds;
               totalInbounds += inbounds.length;
               
-              const enabledCount = inbounds.filter(i => i.enable).length;
+              const enabledCount = inbounds.filter((i: any) => i.enable).length;
               const disabledCount = inbounds.length - enabledCount;
               
               let statusText = `**Total:** ${inbounds.length} inbound(s)\n**Enabled:** ${enabledCount} | **Disabled:** ${disabledCount}`;
               
               if (inbounds.length > 0) {
-                const protocols = [...new Set(inbounds.map(i => i.protocol))];
+                const protocols = [...new Set(inbounds.map((i: any) => i.protocol))];
                 statusText += `\n**Protocols:** ${protocols.join(', ')}`;
               }
               
@@ -124,7 +138,7 @@ export class ListInboundsCommand {
             } else {
               embed.addFields({
                 name: `❌ ${serverResult.serverName}`,
-                value: `Error: ${serverResult.result.msg || 'Connection failed'}`,
+                value: `Error: ${serverResult.error || 'Connection failed'}`,
                 inline: true
               });
             }
