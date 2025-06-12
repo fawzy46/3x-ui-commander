@@ -59,26 +59,14 @@ export class AddClientCommand {
       const expiryDays = interaction.options.getInteger('expiry-days') || 0;
       const limitIp = interaction.options.getInteger('limit-ip') || 0;
       const enabled = interaction.options.getBoolean('enabled') ?? true;
-
-      // Get server info
-      const serverInfo = this.serverManager.getServer(serverId);
+      
+      const serverInfo = this.serverManager.validateServerAccess(serverId, guildId);
+      
       if (!serverInfo) {
         const errorEmbed = new EmbedBuilder()
           .setColor(0xFF0000)
           .setTitle('❌ Server Not Found')
-          .setDescription(`Server with ID '${serverId}' not found`)
-          .setTimestamp();
-
-        await interaction.editReply({ embeds: [errorEmbed] });
-        return;
-      }
-
-      // Check if the command is being used in the correct Discord server
-      if (serverInfo.discordServerId && guildId && serverInfo.discordServerId !== guildId) {
-        const errorEmbed = new EmbedBuilder()
-          .setColor(0xFF0000)
-          .setTitle('❌ Server Access Restricted')
-          .setDescription(`This server can only be managed from its assigned Discord server.`)
+          .setDescription(`Server with ID '${serverId}' not found or not accessible from this Discord server`)
           .setTimestamp();
 
         await interaction.editReply({ embeds: [errorEmbed] });

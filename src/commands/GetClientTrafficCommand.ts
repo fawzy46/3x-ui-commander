@@ -65,24 +65,22 @@ export class GetClientTrafficCommand {
           return;
         }
       }
-
-      // If a server ID was specified, check if it's linked to this Discord server
       if (serverId) {
-        const serverInfo = this.serverManager.getServer(serverId);
-        if (serverInfo && serverInfo.discordServerId && guildId && serverInfo.discordServerId !== guildId) {
+        const serverInfo = this.serverManager.validateServerAccess(serverId, guildId);
+        
+        if (!serverInfo) {
           const errorEmbed = new EmbedBuilder()
             .setColor(0xFF0000)
-            .setTitle('❌ Server Access Restricted')
-            .setDescription(`This server can only be managed from its assigned Discord server.`)
+            .setTitle('❌ Server Not Found')
+            .setDescription(`Server with ID '${serverId}' not found or not accessible from this Discord server`)
             .setTimestamp();
 
           await interaction.editReply({ embeds: [errorEmbed] });
           return;
-        }      
+        }
       } else {
-        // If no server was specified, filter servers by the current Discord server
         if (guildId) {
-          const availableServers = await this.serverManager.getServersByDiscordId(guildId);
+          const availableServers = this.serverManager.getServersByDiscordIdCached(guildId);
           if (availableServers.length > 0) {
             // Only search servers linked to this Discord server
             serverId = availableServers[0].id;
@@ -93,20 +91,8 @@ export class GetClientTrafficCommand {
       // Search for client
       let results: any[] = [];
       let searchType: string = '';
-
       if (serverId) {
-        // Search on specific server
-        const serverInfo = this.serverManager.getServer(serverId);
-        if (!serverInfo) {
-          const errorEmbed = new EmbedBuilder()
-            .setColor(0xFF0000)
-            .setTitle('❌ Server Not Found')
-            .setDescription(`Server with ID '${serverId}' not found`)
-            .setTimestamp();
-
-          await interaction.editReply({ embeds: [errorEmbed] });
-          return;
-        }
+        const serverInfo = this.serverManager.validateServerAccess(serverId, guildId)!;
 
         if (uuid) {
           const response = await this.serverManager.getClientTrafficById(serverId, uuid);
@@ -129,21 +115,49 @@ export class GetClientTrafficCommand {
           }
           searchType = `Email: ${email}`;
         }
-      }
-      
-      else {
-        // Search across all servers
-        if (uuid) {
-          results = await this.serverManager.findClientByUUID(uuid);
-          results = results.map(r => ({
-            ...r,
-            result: { ...r.result, obj: r.result.obj[0] }
-          }));
-          searchType = `UUID: ${uuid}`;
-        } else {
-          results = await this.serverManager.findClientByEmail(email);
-          searchType = `Email: ${email}`;
+      } else {
+        // Search across all servers belonging to this Discord server (cache-first)
+        const discordServers = this.serverManager.getAccessibleServersCached(guildId);
+        
+        if (discordServers.length === 0) {
+          const errorEmbed = new EmbedBuilder()
+            .setColor(0xFF0000)
+            .setTitle('❌ No Servers Available')
+            .setDescription('No servers are available for this Discord server')
+            .setTimestamp();
+
+          await interaction.editReply({ embeds: [errorEmbed] });
+          return;
         }
+
+        // Search each server individually
+        for (const server of discordServers) {
+          try {
+            if (uuid) {
+              const response = await this.serverManager.getClientTrafficById(server.id, uuid);
+              if (response.success && response.obj && response.obj.length > 0) {
+                results.push({
+                  serverId: server.id,
+                  serverName: server.name,
+                  result: { ...response, obj: response.obj[0] }
+                });
+              }
+            } else {
+              const response = await this.serverManager.getClientTraffic(server.id, email);
+              if (response.success && response.obj) {
+                results.push({
+                  serverId: server.id,
+                  serverName: server.name,
+                  result: response
+                });
+              }
+            }
+          } catch (error: any) {
+            console.error(`❌ Failed to search client on server ${server.id}:`, error.message);
+          }
+        }
+        
+        searchType = uuid ? `UUID: ${uuid}` : `Email: ${email}`;
       }
 
       if (results.length === 0) {

@@ -237,13 +237,17 @@ export class ManageServersCommand {
       await interaction.editReply({ embeds: [errorEmbed] });
     }
   }
-
   private async handleRemove(interaction: ChatInputCommandInteraction): Promise<void> {
     const serverId = interaction.options.getString('server-id', true);
+    const discordServerId = interaction.guild?.id;    if (!discordServerId) {
+      throw new Error('This command can only be used in a Discord server');
+    }
 
-    const server = this.serverManager.getServer(serverId);
+    // First check if the server exists and belongs to this Discord server (cache-first)
+    const server = this.serverManager.validateServerAccess(serverId, discordServerId);
+    
     if (!server) {
-      throw new Error(`Server with ID '${serverId}' not found`);
+      throw new Error(`Server with ID '${serverId}' not found or doesn't belong to this Discord server`);
     }
 
     await this.serverManager.deleteExistingServer(serverId);
@@ -259,14 +263,18 @@ export class ManageServersCommand {
 
     await interaction.editReply({ embeds: [successEmbed] });
   }
-
   private async handleToggle(interaction: ChatInputCommandInteraction): Promise<void> {
     const serverId = interaction.options.getString('server-id', true);
     const active = interaction.options.getBoolean('active', true);
+    const discordServerId = interaction.guild?.id;
 
-    const server = this.serverManager.getServer(serverId);
+    if (!discordServerId) {
+      throw new Error('This command can only be used in a Discord server');
+    }    // First check if the server exists and belongs to this Discord server (cache-first)
+    const server = this.serverManager.validateServerAccess(serverId, discordServerId);
+    
     if (!server) {
-      throw new Error(`Server with ID '${serverId}' not found`);
+      throw new Error(`Server with ID '${serverId}' not found or doesn't belong to this Discord server`);
     }
 
     await this.serverManager.setServerActiveStatus(serverId, active);
@@ -283,16 +291,26 @@ export class ManageServersCommand {
 
     await interaction.editReply({ embeds: [successEmbed] });
   }
-
   private async handleRefresh(interaction: ChatInputCommandInteraction): Promise<void> {
-    await this.serverManager.refreshServers();
+    const discordServerId = interaction.guild?.id;
+    
+    if (!discordServerId) {
+      const errorEmbed = new EmbedBuilder()
+        .setColor(0xFF0000)
+        .setTitle('❌ Error')
+        .setDescription('This command can only be used in a Discord server')
+        .setTimestamp();
+      
+      await interaction.editReply({ embeds: [errorEmbed] });
+      return;
+    }    await this.serverManager.refreshServersForDiscord(discordServerId);
 
-    const servers = this.serverManager.getServers();
+    const servers = this.serverManager.getServersByDiscordIdCached(discordServerId);
 
     const successEmbed = new EmbedBuilder()
       .setColor(0x00FF00)
       .setTitle('✅ Servers Refreshed')
-      .setDescription(`Reloaded ${servers.length} server(s) from database`)
+      .setDescription(`Reloaded ${servers.length} server(s) from database for this Discord server`)
       .setTimestamp();
 
     await interaction.editReply({ embeds: [successEmbed] });

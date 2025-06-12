@@ -20,9 +20,8 @@ export class ListServersCommand {
     try {
       const testConnection = interaction.options.getBoolean('test-connection') || false;
       const guildId = interaction.guildId;
-      
-      // Filter servers by Discord server ID if we're in a guild
-      let servers = await this.serverManager.filterServersByDiscordId(guildId);
+        // Filter servers by Discord server ID if we're in a guild (cache-first)
+      const servers = this.serverManager.getAccessibleServersCached(guildId);
 
       if (servers.length === 0) {
         const errorEmbed = new EmbedBuilder()

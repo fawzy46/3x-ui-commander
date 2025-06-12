@@ -66,13 +66,13 @@ export class UpdateClientCommand {
       const uuid = interaction.options.getString('uuid', true);
       const inboundId = interaction.options.getInteger('inbound-id', true);
       
-      // Get server info
-      const serverInfo = this.serverManager.getServer(serverId);
+      const serverInfo = this.serverManager.validateServerAccess(serverId, guildId);
+      
       if (!serverInfo) {
         const errorEmbed = new EmbedBuilder()
           .setColor(0xFF0000)
           .setTitle('❌ Server Not Found')
-          .setDescription(`Server with ID '${serverId}' not found`)
+          .setDescription(`Server with ID '${serverId}' not found or not accessible from this Discord server`)
           .setTimestamp();
 
         await interaction.editReply({ embeds: [errorEmbed] });

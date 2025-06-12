@@ -3,14 +3,15 @@ import { ServerConfig, ApiResponse, Inbound, Client, ClientTraffic } from '../ty
 import { DatabaseService } from '../db/DatabaseService';
 
 export class MultiServerManager {
-  private servers: Map<string, ServerConfig> = new Map();
-  private clients: Map<string, XUIApiClient> = new Map();
+  private serversByDiscord: Map<string, ServerConfig[]> = new Map(); // Discord server ID -> ServerConfig[]
+  private clients: Map<string, XUIApiClient> = new Map(); // Server ID -> XUIApiClient
   private dbService: DatabaseService;
   private initialized: boolean = false;
 
   constructor() {
     this.dbService = new DatabaseService();
   }
+
   /**
    * Initialize the manager with database
    */
@@ -26,9 +27,11 @@ export class MultiServerManager {
       console.error('❌ Failed to initialize MultiServerManager:', error);
       throw error;
     }
-  }  /**
+  }
+  
+  /**
    * Load server configurations from database with fallback to environment variables
-   */
+  */
   private async loadServerConfigurations(): Promise<void> {
     try {
       // First try to load from database
@@ -41,7 +44,7 @@ export class MultiServerManager {
           this.addServer(server);
         });
         
-        console.log(`✅ Loaded ${this.servers.size} active server(s) from database`);
+        console.log(`✅ Loaded ${this.getTotalServerCount()} active server(s) from database`);
         return;
       }
     } catch (error) {
@@ -62,9 +65,8 @@ export class MultiServerManager {
             this.addServer(server);
           }
         }
-        
-        if (this.servers.size > 0) {
-          console.log(`✅ Loaded ${this.servers.size} active server(s) from environment variable and saved to database`);
+          if (this.getTotalServerCount() > 0) {
+          console.log(`✅ Loaded ${this.getTotalServerCount()} active server(s) from environment variable and saved to database`);
           return;
         }
       } catch (error) {
@@ -93,83 +95,103 @@ export class MultiServerManager {
       }
       
       this.addServer(singleServer);
-      console.log(`✅ Loaded ${this.servers.size} active server(s) from legacy configuration`);
+      console.log(`✅ Loaded ${this.getTotalServerCount()} active server(s) from legacy configuration`);
     } else {
       console.log('📋 No servers configured. Use the /manage-servers command to add servers.');
     }
   }
-
   /**
    * Add a server configuration and create its API client
    */
   private addServer(config: ServerConfig): void {
-    this.servers.set(config.id, config);
+    const discordId = config.discordServerId || 'global';
+    
+    // Get existing servers for this Discord server or create new array
+    const existingServers = this.serversByDiscord.get(discordId) || [];
+    
+    // Check if server already exists
+    const existingIndex = existingServers.findIndex(s => s.id === config.id);
+    if (existingIndex >= 0) {
+      existingServers[existingIndex] = config;
+    } else {
+      existingServers.push(config);
+    }
+    
+    this.serversByDiscord.set(discordId, existingServers);
+    
     const apiClient = new XUIApiClient(config);
     this.clients.set(config.id, apiClient);
-    console.log(`✅ Added server: ${config.name} (${config.id})`);
+    console.log(`✅ Added server: ${config.name} (${config.id}) to Discord: ${discordId}`);
+  }
+
+  /**
+   * Get total number of servers across all Discord servers
+   */
+  private getTotalServerCount(): number {
+    let total = 0;
+    for (const servers of this.serversByDiscord.values()) {
+      total += servers.length;
+    }
+    return total;
   }
 
   /**
    * Get all available servers
    */
   public getServers(): ServerConfig[] {
-    return Array.from(this.servers.values());
+    const allServers: ServerConfig[] = [];
+    for (const servers of this.serversByDiscord.values()) {
+      allServers.push(...servers);
+    }
+    return allServers;
   }
 
   /**
    * Get server configuration by ID
    */
   public getServer(serverId: string): ServerConfig | undefined {
-    return this.servers.get(serverId);
-  }  
-  /**
-   * Get server configuration by Discord server ID
-   */
-  public async getServerByDiscordId(discordServerId: string): Promise<ServerConfig | undefined> {
-    if (!this.initialized) await this.initialize();
-    
-    // First check in-memory cache
-    const cachedServer = Array.from(this.servers.values()).find(server => 
-      server.discordServerId === discordServerId
-    );
-    
-    if (cachedServer) return cachedServer;
-    
-    // Fallback to database
-    const dbServer = await this.dbService.getServerByDiscordId(discordServerId);
-    return dbServer || undefined;
+    for (const servers of this.serversByDiscord.values()) {
+      const server = servers.find(s => s.id === serverId);
+      if (server) return server;
+    }
+    return undefined;
   }
 
   /**
-   * Get servers associated with a Discord server ID
+   * Get servers for a Discord server (cache-first, no database call)
    */
-  public async getServersByDiscordId(discordServerId: string): Promise<ServerConfig[]> {
-    if (!this.initialized) await this.initialize();
-    
-    // First check in-memory cache
-    const cachedServers = Array.from(this.servers.values()).filter(server => 
-      server.discordServerId === discordServerId
-    );
-    
-    if (cachedServers.length > 0) return cachedServers;
-    
-    // Fallback to database
-    return await this.dbService.getServersByDiscordId(discordServerId);
+  public getServersByDiscordIdCached(discordServerId: string): ServerConfig[] {
+    return this.serversByDiscord.get(discordServerId) || [];
   }
+
   /**
-   * Filter servers by Discord server ID
+   * Get servers accessible from a Discord server (cache-first)
    * Returns servers associated with the Discord server ID or servers with no Discord ID set
    */
-  public async filterServersByDiscordId(discordServerId: string | null): Promise<ServerConfig[]> {
-    if (!this.initialized) await this.initialize();
-    return await this.dbService.filterServersByDiscordId(discordServerId);
+  public getAccessibleServersCached(discordServerId: string | null): ServerConfig[] {
+    if (!discordServerId) {
+      return this.getServers().filter(s => s.isActive);
+    }
+
+    const result: ServerConfig[] = [];
+    
+    // Add servers specifically for this Discord server
+    const discordServers = this.serversByDiscord.get(discordServerId) || [];
+    result.push(...discordServers.filter(s => s.isActive));
+    
+    // Add global servers (those without Discord server ID)
+    const globalServers = this.serversByDiscord.get('global') || [];
+    result.push(...globalServers.filter(s => s.isActive));
+    
+    return result;
   }
 
   /**
-   * Get API client for a specific server
+   * Validate that a server belongs to a Discord server (cache-first)
    */
-  public getClient(serverId: string): XUIApiClient | undefined {
-    return this.clients.get(serverId);
+  public validateServerAccess(serverId: string, discordServerId: string | null): ServerConfig | null {
+    const accessibleServers = this.getAccessibleServersCached(discordServerId);
+    return accessibleServers.find(s => s.id === serverId) || null;
   }
 
   /**
@@ -363,7 +385,6 @@ export class MultiServerManager {
       this.addServer(config);
     }
   }
-
   /**
    * Update an existing server in the database
    */
@@ -373,18 +394,23 @@ export class MultiServerManager {
     await this.dbService.updateServer(id, config);
     
     // Update in-memory cache if the server is loaded
-    const existingServer = this.servers.get(id);
-    if (existingServer) {
-      const updatedServer = { ...existingServer, ...config };
-      this.servers.set(id, updatedServer);
-      
-      // Recreate the client if needed
-      if (config.host || config.port || config.username || config.password || config.webBasePath) {
-        this.clients.delete(id);
-        if (updatedServer.isActive) {
-          const newClient = new XUIApiClient(updatedServer);
-          this.clients.set(id, newClient);
+    let serverFound = false;
+    for (const [discordId, servers] of this.serversByDiscord.entries()) {
+      const serverIndex = servers.findIndex(s => s.id === id);
+      if (serverIndex >= 0) {
+        const updatedServer = { ...servers[serverIndex], ...config };
+        servers[serverIndex] = updatedServer;
+        serverFound = true;
+        
+        // Recreate the client if needed
+        if (config.host || config.port || config.username || config.password || config.webBasePath) {
+          this.clients.delete(id);
+          if (updatedServer.isActive) {
+            const newClient = new XUIApiClient(updatedServer);
+            this.clients.set(id, newClient);
+          }
         }
+        break;
       }
     }
   }
@@ -396,7 +422,19 @@ export class MultiServerManager {
     if (!this.initialized) await this.initialize();
     
     await this.dbService.deleteServer(id);
-    this.servers.delete(id);
+    
+    // Remove from cache
+    for (const [discordId, servers] of this.serversByDiscord.entries()) {
+      const serverIndex = servers.findIndex(s => s.id === id);
+      if (serverIndex >= 0) {
+        servers.splice(serverIndex, 1);
+        if (servers.length === 0) {
+          this.serversByDiscord.delete(discordId);
+        }
+        break;
+      }
+    }
+    
     this.clients.delete(id);
   }
 
@@ -408,27 +446,61 @@ export class MultiServerManager {
     
     await this.dbService.setServerActive(id, isActive);
     
-    const server = this.servers.get(id);
-    if (server) {
-      server.isActive = isActive;
-      if (!isActive) {
-        this.clients.delete(id);
-      } else {
-        const newClient = new XUIApiClient(server);
-        this.clients.set(id, newClient);
+    // Update cache
+    for (const servers of this.serversByDiscord.values()) {
+      const server = servers.find(s => s.id === id);
+      if (server) {
+        server.isActive = isActive;
+        if (!isActive) {
+          this.clients.delete(id);
+        } else {
+          const newClient = new XUIApiClient(server);
+          this.clients.set(id, newClient);
+        }
+        break;
       }
     }
   }
-
   /**
    * Refresh servers from database
    */
   public async refreshServers(): Promise<void> {
     if (!this.initialized) await this.initialize();
     
-    this.servers.clear();
+    this.serversByDiscord.clear();
     this.clients.clear();
     await this.loadServerConfigurations();
+  }
+
+  /**
+   * Refresh servers for a specific Discord server only
+   */
+  public async refreshServersForDiscord(discordServerId: string): Promise<void> {
+    if (!this.initialized) await this.initialize();
+    
+    // Remove current Discord server entries from cache
+    const currentDiscordServers = this.serversByDiscord.get(discordServerId) || [];
+    currentDiscordServers.forEach(server => {
+      this.clients.delete(server.id);
+    });
+    this.serversByDiscord.delete(discordServerId);
+    
+    // Reload servers for this Discord server from database
+    const refreshedServers = await this.dbService.getServersByDiscordId(discordServerId);
+    refreshedServers.forEach(server => {
+      if (server.isActive) {
+        this.addServer(server);
+      }
+    });
+    
+    console.log(`✅ Refreshed ${refreshedServers.length} server(s) for Discord server ${discordServerId}`);
+  }
+
+  /**
+   * Get API client for a specific server
+   */
+  public getClient(serverId: string): XUIApiClient | undefined {
+    return this.clients.get(serverId);
   }
 }
 

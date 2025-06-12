@@ -21,27 +21,15 @@ export class ListInboundsCommand {
     try {
       const serverId = interaction.options.getString('server');
       const guildId = interaction.guildId;
-
       if (serverId) {
-        // Get inbounds from specific server
-        const serverInfo = this.serverManager.getServer(serverId);
+        // Get inbounds from specific server - ensure it belongs to this Discord server (cache-first)
+        const serverInfo = this.serverManager.validateServerAccess(serverId, guildId);
+        
         if (!serverInfo) {
           const errorEmbed = new EmbedBuilder()
             .setColor(0xFF0000)
             .setTitle('❌ Server Not Found')
-            .setDescription(`Server with ID '${serverId}' not found`)
-            .setTimestamp();
-
-          await interaction.editReply({ embeds: [errorEmbed] });
-          return;
-        }
-
-        // Check if the command is being used in the correct Discord server
-        if (serverInfo.discordServerId && guildId && serverInfo.discordServerId !== guildId) {
-          const errorEmbed = new EmbedBuilder()
-            .setColor(0xFF0000)
-            .setTitle('❌ Server Access Restricted')
-            .setDescription(`This server can only be managed from its assigned Discord server.`)
+            .setDescription(`Server with ID '${serverId}' not found or not accessible from this Discord server`)
             .setTimestamp();
 
           await interaction.editReply({ embeds: [errorEmbed] });
@@ -91,8 +79,8 @@ export class ListInboundsCommand {
         }
 
         await interaction.editReply({ embeds: [embed] });      } else {
-        // Get inbounds from all servers
-        let servers = await this.serverManager.filterServersByDiscordId(guildId);
+        // Get inbounds from all servers (cache-first)
+        const servers = this.serverManager.getAccessibleServersCached(guildId);
         
         // Get inbounds only from filtered servers
         const results = await Promise.all(servers.map(server => 
