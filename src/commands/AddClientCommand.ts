@@ -23,6 +23,12 @@ export class AddClientCommand {
           )
           .setRequired(true)
       )
+      .addStringOption((option) =>
+        option
+          .setName('email')
+          .setDescription('Client email/username')
+          .setRequired(true)
+      )
       .addIntegerOption((option) =>
         option
           .setName('inbound-id')
@@ -30,12 +36,6 @@ export class AddClientCommand {
             'The inbound ID to add the client to (uses server default if not specified)'
           )
           .setRequired(false)
-      )
-      .addStringOption((option) =>
-        option
-          .setName('email')
-          .setDescription('Client email/username')
-          .setRequired(true)
       )
       .addIntegerOption((option) =>
         option
