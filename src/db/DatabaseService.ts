@@ -41,6 +41,7 @@ export class DatabaseService {
           password TEXT NOT NULL,
           is_active INTEGER NOT NULL DEFAULT 1,
           discord_server_id TEXT,
+          default_inbound_id INTEGER,
           created_at INTEGER NOT NULL,
           updated_at INTEGER NOT NULL
         )
@@ -148,6 +149,7 @@ export class DatabaseService {
       password: config.password,
       isActive: config.isActive,
       discordServerId: config.discordServerId,
+      defaultInboundId: config.defaultInboundId,
       createdAt: now,
       updatedAt: now
     });
@@ -198,7 +200,8 @@ export class DatabaseService {
       username: server.username,
       password: server.password,
       isActive: server.isActive,
-      discordServerId: server.discordServerId || undefined
+      discordServerId: server.discordServerId || undefined,
+      defaultInboundId: server.defaultInboundId || undefined
     };
   }
 }

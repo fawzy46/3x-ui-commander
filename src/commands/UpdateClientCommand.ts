@@ -31,8 +31,10 @@ export class UpdateClientCommand {
       .addIntegerOption((option) =>
         option
           .setName('inbound-id')
-          .setDescription('The inbound ID where the client exists')
-          .setRequired(true)
+          .setDescription(
+            'The inbound ID where the client exists (uses server default if not specified)'
+          )
+          .setRequired(false)
       )
       .addStringOption((option) =>
         option
@@ -81,7 +83,7 @@ export class UpdateClientCommand {
       const guildId = interaction.guildId;
       const serverId = interaction.options.getString('server', true);
       const uuid = interaction.options.getString('uuid', true);
-      const inboundId = interaction.options.getInteger('inbound-id', true);
+      const specifiedInboundId = interaction.options.getInteger('inbound-id');
 
       const serverInfo = this.serverManager.validateServerAccess(
         serverId,
@@ -101,17 +103,19 @@ export class UpdateClientCommand {
         return;
       }
 
-      // Check if the command is being used in the correct Discord server
-      if (
-        serverInfo.discordServerId &&
-        guildId &&
-        serverInfo.discordServerId !== guildId
-      ) {
+      // Determine which inbound ID to use
+      let inboundId: number;
+
+      if (specifiedInboundId !== null) {
+        inboundId = specifiedInboundId;
+      } else if (serverInfo.defaultInboundId !== undefined) {
+        inboundId = serverInfo.defaultInboundId;
+      } else {
         const errorEmbed = new EmbedBuilder()
           .setColor(0xff0000)
-          .setTitle('❌ Server Access Restricted')
+          .setTitle('❌ No Inbound ID Specified')
           .setDescription(
-            `This server can only be managed from its assigned Discord server.`
+            `No inbound ID specified and server '${serverInfo.name}' has no default inbound configured. Please specify an inbound ID or configure a default inbound for this server.`
           )
           .setTimestamp();
 
@@ -154,7 +158,7 @@ export class UpdateClientCommand {
 
       // Calculate new expiry time
       let expiryTime = existingClient.expiryTime;
-      if (expiryDays !== null) {
+      if (expiryDays !== null && expiryDays !== undefined) {
         expiryTime =
           expiryDays > 0 ? Date.now() + expiryDays * 24 * 60 * 60 * 1000 : 0;
       }
@@ -163,13 +167,22 @@ export class UpdateClientCommand {
       const updatedClient: Client = {
         id: uuid,
         email: email,
-        limitIp: limitIp !== null ? limitIp : 0,
-        totalGB: totalGB !== null ? totalGB * 1024 * 1024 * 1024 : 0, // Convert GB to bytes
+        limitIp: limitIp !== null && limitIp !== undefined ? limitIp : 0,
+        totalGB:
+          totalGB !== null && totalGB !== undefined
+            ? totalGB * 1024 * 1024 * 1024
+            : existingClient.total, // Convert GB to bytes or keep existing total
         expiryTime: expiryTime,
-        enable: enabled !== null ? enabled : existingClient.enable,
+        enable:
+          enabled !== null && enabled !== undefined
+            ? enabled
+            : existingClient.enable,
         tgId: '',
         subId: this.generateSubId(),
-        reset: resetTraffic !== null ? resetTraffic : existingClient.reset,
+        reset:
+          resetTraffic !== null && resetTraffic !== undefined
+            ? resetTraffic
+            : existingClient.reset,
         flow: '' // For VLESS protocol
       };
 

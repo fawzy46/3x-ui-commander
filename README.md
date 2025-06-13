@@ -135,11 +135,20 @@ Manage server configurations (Requires Administrator Privilege).
 
 **Subcommands:**
 
-- `add`: Add a new 3x-ui server configuration
-- `list`: List all configured servers
-- `edit`: Edit an existing server configuration
-- `delete`: Remove a server configuration
-- `test`: Test connection to servers
+- `add`: Add a new 3x-ui server configuration (opens a form)
+- `edit`: Edit an existing server configuration (opens a form with current values)
+- `remove`: Remove a server configuration
+- `toggle`: Enable/disable a server
+- `refresh`: Refresh servers from database
+
+**Configuration Form Fields:**
+
+- **Server ID**: Unique identifier for the server (only shown when adding)
+- **Server Name**: Display name for the server
+- **Host**: Full URL including protocol (e.g., http://192.168.1.100)
+- **Port and Web Path**: Format: `port,webpath` (e.g., `2053,/panel` or `443,/`)
+- **Credentials and Default Inbound**: Format: `username,password,defaultInboundId` (e.g., `admin,mypass123,1`)
+  - The default inbound ID is optional but recommended for easier client management
 
 ### `/list-servers`
 
@@ -164,7 +173,7 @@ Add a new client to a 3x-ui inbound on a specific server (Requires Administrator
 **Options:**
 
 - `server` (required): Select the server to add the client to
-- `inbound-id` (required): The inbound ID to add the client to
+- `inbound-id` (optional): The inbound ID to add the client to (uses server default if not specified)
 - `email` (required): Client email/username
 - `total-gb` (optional): Total GB limit (0 for unlimited)
 - `expiry-days` (optional): Days until expiry (0 for no expiry)
@@ -179,7 +188,7 @@ Update an existing client configuration on a specific server (Requires Administr
 
 - `server` (required): Select the server where the client exists
 - `uuid` (required): Client UUID to update
-- `inbound-id` (required): The inbound ID where the client exists
+- `inbound-id` (optional): The inbound ID where the client exists (uses server default if not specified)
 - `email` (optional): New client email/username
 - `total-gb` (optional): New total GB limit
 - `expiry-days` (optional): New days until expiry

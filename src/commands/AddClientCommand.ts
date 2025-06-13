@@ -26,8 +26,10 @@ export class AddClientCommand {
       .addIntegerOption((option) =>
         option
           .setName('inbound-id')
-          .setDescription('The inbound ID to add the client to')
-          .setRequired(true)
+          .setDescription(
+            'The inbound ID to add the client to (uses server default if not specified)'
+          )
+          .setRequired(false)
       )
       .addStringOption((option) =>
         option
@@ -69,7 +71,7 @@ export class AddClientCommand {
     try {
       const guildId = interaction.guildId;
       const serverId = interaction.options.getString('server', true);
-      const inboundId = interaction.options.getInteger('inbound-id', true);
+      const specifiedInboundId = interaction.options.getInteger('inbound-id');
       const email = interaction.options.getString('email', true);
       const totalGB = interaction.options.getInteger('total-gb') || 0;
       const expiryDays = interaction.options.getInteger('expiry-days') || 0;
@@ -87,6 +89,26 @@ export class AddClientCommand {
           .setTitle('❌ Server Not Found')
           .setDescription(
             `Server with ID '${serverId}' not found or not accessible from this Discord server`
+          )
+          .setTimestamp();
+
+        await interaction.editReply({ embeds: [errorEmbed] });
+        return;
+      }
+
+      // Determine which inbound ID to use
+      let inboundId: number;
+
+      if (specifiedInboundId !== null) {
+        inboundId = specifiedInboundId;
+      } else if (serverInfo.defaultInboundId !== undefined) {
+        inboundId = serverInfo.defaultInboundId;
+      } else {
+        const errorEmbed = new EmbedBuilder()
+          .setColor(0xff0000)
+          .setTitle('❌ No Inbound ID Specified')
+          .setDescription(
+            `No inbound ID specified and server '${serverInfo.name}' has no default inbound configured. Please specify an inbound ID or configure a default inbound for this server.`
           )
           .setTimestamp();
 

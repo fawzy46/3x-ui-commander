@@ -10,6 +10,7 @@ export const servers = sqliteTable('servers', {
   password: text('password').notNull(),
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
   discordServerId: text('discord_server_id'),
+  defaultInboundId: integer('default_inbound_id'),
   createdAt: integer('created_at', { mode: 'timestamp' })
     .notNull()
     .$defaultFn(() => new Date()),
