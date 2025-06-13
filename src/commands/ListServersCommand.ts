@@ -1,4 +1,9 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
+import {
+  SlashCommandBuilder,
+  ChatInputCommandInteraction,
+  EmbedBuilder,
+  PermissionFlagsBits
+} from 'discord.js';
 import { MultiServerManager } from '../api/MultiServerManager';
 
 export class ListServersCommand {
@@ -8,24 +13,28 @@ export class ListServersCommand {
     this.data = new SlashCommandBuilder()
       .setName('list-servers')
       .setDescription('List all configured 3x-ui servers and their status')
-      .addBooleanOption(option =>
-        option.setName('test-connection')
+      .addBooleanOption((option) =>
+        option
+          .setName('test-connection')
           .setDescription('Test connection to all servers (default: false)')
           .setRequired(false)
       );
   }
-  public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+  public async execute(
+    interaction: ChatInputCommandInteraction
+  ): Promise<void> {
     await interaction.deferReply({ ephemeral: true });
 
     try {
-      const testConnection = interaction.options.getBoolean('test-connection') || false;
+      const testConnection =
+        interaction.options.getBoolean('test-connection') || false;
       const guildId = interaction.guildId;
-        // Filter servers by Discord server ID if we're in a guild (cache-first)
+      // Filter servers by Discord server ID if we're in a guild (cache-first)
       const servers = this.serverManager.getAccessibleServersCached(guildId);
 
       if (servers.length === 0) {
         const errorEmbed = new EmbedBuilder()
-          .setColor(0xFF0000)
+          .setColor(0xff0000)
           .setTitle('❌ No Servers Available')
           .setDescription('No servers are available for this Discord server')
           .setTimestamp();
@@ -37,9 +46,11 @@ export class ListServersCommand {
       let connectionResults: any[] = [];
       if (testConnection) {
         const embed = new EmbedBuilder()
-          .setColor(0xFF9900)
+          .setColor(0xff9900)
           .setTitle('🔄 Testing Connections...')
-          .setDescription('Please wait while testing connections to all servers...')
+          .setDescription(
+            'Please wait while testing connections to all servers...'
+          )
           .setTimestamp();
 
         await interaction.editReply({ embeds: [embed] });
@@ -48,16 +59,20 @@ export class ListServersCommand {
       }
 
       const embed = new EmbedBuilder()
-        .setColor(0x00FF00)
+        .setColor(0x00ff00)
         .setTitle('🌐 Configured 3x-ui Servers')
-        .setDescription(`Found ${servers.length} active server(s)${testConnection ? ' with connection test results' : ''}`)
+        .setDescription(
+          `Found ${servers.length} active server(s)${testConnection ? ' with connection test results' : ''}`
+        )
         .setTimestamp();
 
       servers.forEach((server, index) => {
         let statusText = '';
-        
+
         if (testConnection && connectionResults.length > 0) {
-          const connectionResult = connectionResults.find(r => r.serverId === server.id);
+          const connectionResult = connectionResults.find(
+            (r) => r.serverId === server.id
+          );
           if (connectionResult) {
             statusText += `\n**Connection:** ${connectionResult.success ? '✅ Online' : '❌ Offline'}`;
             if (!connectionResult.success && connectionResult.error) {
@@ -74,7 +89,7 @@ export class ListServersCommand {
       });
 
       if (testConnection) {
-        const onlineCount = connectionResults.filter(r => r.success).length;
+        const onlineCount = connectionResults.filter((r) => r.success).length;
         embed.addFields({
           name: '📊 Connection Summary',
           value: `Online: ${onlineCount}/${servers.length} servers`,
@@ -83,13 +98,11 @@ export class ListServersCommand {
       }
 
       await interaction.editReply({ embeds: [embed] });
-
-    } 
-    catch (error: any) {
+    } catch (error: any) {
       console.error('Error in list-servers command:', error);
 
       const errorEmbed = new EmbedBuilder()
-        .setColor(0xFF0000)
+        .setColor(0xff0000)
         .setTitle('❌ Error')
         .setDescription(error.message || 'An unexpected error occurred')
         .setTimestamp();

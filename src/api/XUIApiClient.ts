@@ -1,5 +1,11 @@
 import axios, { AxiosInstance } from 'axios';
-import { Client, ClientTraffic, ApiResponse, Inbound, ServerConfig } from '../types';
+import {
+  Client,
+  ClientTraffic,
+  ApiResponse,
+  Inbound,
+  ServerConfig
+} from '../types';
 
 export class XUIApiClient {
   private axios: AxiosInstance;
@@ -32,14 +38,14 @@ export class XUIApiClient {
     }
 
     const baseURL = `${this.apiHost}:${this.apiPort}${this.apiWebBasePath}`;
-    
+
     this.axios = axios.create({
       baseURL,
       timeout: 30000,
       withCredentials: true,
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
     });
 
     // Add request interceptor to include session cookie
@@ -71,27 +77,34 @@ export class XUIApiClient {
     try {
       const loginData = new URLSearchParams({
         username: this.apiUsername,
-        password: this.apiPassword,
+        password: this.apiPassword
       });
 
       const response = await this.axios.post('/login', loginData);
-      
+
       if (response.data.success) {
         // Extract session cookie from response headers
         const setCookie = response.headers['set-cookie'];
         if (setCookie && setCookie.length > 0) {
           // Find the session cookie (usually named '3x-ui')
-          const sessionCookie = setCookie.find(cookie => cookie.includes('3x-ui='));
+          const sessionCookie = setCookie.find((cookie) =>
+            cookie.includes('3x-ui=')
+          );
           if (sessionCookie) {
             this.sessionCookie = sessionCookie.split(';')[0];
           }
-        }        
-        console.log(`✅ Successfully logged in to 3x-ui API${this.serverName ? ` (${this.serverName})` : ''}`);
+        }
+        console.log(
+          `✅ Successfully logged in to 3x-ui API${this.serverName ? ` (${this.serverName})` : ''}`
+        );
       } else {
         throw new Error(response.data.msg || 'Login failed');
       }
     } catch (error: any) {
-      console.error(`❌ Failed to login to 3x-ui API${this.serverName ? ` (${this.serverName})` : ''}:`, error.message);
+      console.error(
+        `❌ Failed to login to 3x-ui API${this.serverName ? ` (${this.serverName})` : ''}:`,
+        error.message
+      );
       throw new Error(`Login failed: ${error.message}`);
     }
   }
@@ -110,7 +123,7 @@ export class XUIApiClient {
    */
   public async getInbounds(): Promise<ApiResponse<Inbound[]>> {
     await this.ensureAuthenticated();
-    
+
     try {
       const response = await this.axios.get('/panel/api/inbounds/list');
       return response.data;
@@ -125,9 +138,11 @@ export class XUIApiClient {
    */
   public async getInbound(inboundId: number): Promise<ApiResponse<Inbound>> {
     await this.ensureAuthenticated();
-    
+
     try {
-      const response = await this.axios.get(`/panel/api/inbounds/get/${inboundId}`);
+      const response = await this.axios.get(
+        `/panel/api/inbounds/get/${inboundId}`
+      );
       return response.data;
     } catch (error: any) {
       console.error(`Error getting inbound ${inboundId}:`, error.message);
@@ -138,13 +153,15 @@ export class XUIApiClient {
   /**
    * Add a client to an inbound
    */
-  public async addClient(inboundId: number, client: Client): Promise<ApiResponse> {
+  public async addClient(
+    inboundId: number,
+    client: Client
+  ): Promise<ApiResponse> {
     await this.ensureAuthenticated();
-    
-    try {
 
-      var settings: any = {clients: []};
-      
+    try {
+      var settings: any = { clients: [] };
+
       if (!client) {
         throw new Error('Client data is required');
       }
@@ -154,10 +171,13 @@ export class XUIApiClient {
       // Prepare the update data
       const updateData = new URLSearchParams({
         id: inboundId.toString(),
-        settings: JSON.stringify(settings),
+        settings: JSON.stringify(settings)
       });
 
-      const response = await this.axios.post(`/panel/api/inbounds/addClient`, updateData);
+      const response = await this.axios.post(
+        `/panel/api/inbounds/addClient`,
+        updateData
+      );
       return response.data;
     } catch (error: any) {
       console.error('Error adding client:', error.message);
@@ -168,18 +188,25 @@ export class XUIApiClient {
   /**
    * Update a client
    */
-  public async updateClient(uuid: string, inboundId: number, client: Client): Promise<ApiResponse> {
+  public async updateClient(
+    uuid: string,
+    inboundId: number,
+    client: Client
+  ): Promise<ApiResponse> {
     await this.ensureAuthenticated();
-    
+
     try {
       const updateData = new URLSearchParams({
         id: inboundId.toString(),
         settings: JSON.stringify({
           clients: [client]
-        }),
+        })
       });
 
-      const response = await this.axios.post(`/panel/api/inbounds/updateClient/${uuid}`, updateData);
+      const response = await this.axios.post(
+        `/panel/api/inbounds/updateClient/${uuid}`,
+        updateData
+      );
       return response.data;
     } catch (error: any) {
       console.error('Error updating client:', error.message);
@@ -190,14 +217,21 @@ export class XUIApiClient {
   /**
    * Get client traffic by email
    */
-  public async getClientTraffic(email: string): Promise<ApiResponse<ClientTraffic>> {
+  public async getClientTraffic(
+    email: string
+  ): Promise<ApiResponse<ClientTraffic>> {
     await this.ensureAuthenticated();
-    
+
     try {
-      const response = await this.axios.get(`/panel/api/inbounds/getClientTraffics/${email}`);
+      const response = await this.axios.get(
+        `/panel/api/inbounds/getClientTraffics/${email}`
+      );
       return response.data;
     } catch (error: any) {
-      console.error(`Error getting client traffic for ${email}:`, error.message);
+      console.error(
+        `Error getting client traffic for ${email}:`,
+        error.message
+      );
       throw error;
     }
   }
@@ -205,14 +239,21 @@ export class XUIApiClient {
   /**
    * Get client traffic by UUID
    */
-  public async getClientTrafficById(uuid: string): Promise<ApiResponse<ClientTraffic[]>> {
+  public async getClientTrafficById(
+    uuid: string
+  ): Promise<ApiResponse<ClientTraffic[]>> {
     await this.ensureAuthenticated();
-    
+
     try {
-      const response = await this.axios.get(`/panel/api/inbounds/getClientTrafficsById/${uuid}`);
+      const response = await this.axios.get(
+        `/panel/api/inbounds/getClientTrafficsById/${uuid}`
+      );
       return response.data;
     } catch (error: any) {
-      console.error(`Error getting client traffic for UUID ${uuid}:`, error.message);
+      console.error(
+        `Error getting client traffic for UUID ${uuid}:`,
+        error.message
+      );
       throw error;
     }
   }
@@ -220,16 +261,22 @@ export class XUIApiClient {
   /**
    * Delete a client
    */
-  public async deleteClient(inboundId: number, uuid: string): Promise<ApiResponse> {
+  public async deleteClient(
+    inboundId: number,
+    uuid: string
+  ): Promise<ApiResponse> {
     await this.ensureAuthenticated();
-    
+
     try {
       const deleteData = new URLSearchParams({
         id: inboundId.toString(),
-        uuid: uuid,
+        uuid: uuid
       });
 
-      const response = await this.axios.post(`/panel/api/inbounds/delClient/${uuid}`, deleteData);
+      const response = await this.axios.post(
+        `/panel/api/inbounds/delClient/${uuid}`,
+        deleteData
+      );
       return response.data;
     } catch (error: any) {
       console.error('Error deleting client:', error.message);
@@ -240,16 +287,22 @@ export class XUIApiClient {
   /**
    * Reset client traffic
    */
-  public async resetClientTraffic(inboundId: number, email: string): Promise<ApiResponse> {
+  public async resetClientTraffic(
+    inboundId: number,
+    email: string
+  ): Promise<ApiResponse> {
     await this.ensureAuthenticated();
-    
+
     try {
       const resetData = new URLSearchParams({
         id: inboundId.toString(),
-        email: email,
+        email: email
       });
 
-      const response = await this.axios.post(`/panel/api/inbounds/resetClientTraffic/${email}`, resetData);
+      const response = await this.axios.post(
+        `/panel/api/inbounds/resetClientTraffic/${email}`,
+        resetData
+      );
       return response.data;
     } catch (error: any) {
       console.error('Error resetting client traffic:', error.message);
@@ -260,7 +313,12 @@ export class XUIApiClient {
   /**
    * Get server information
    */
-  public getServerInfo(): { id?: string; name?: string; host: string; port: string } {
+  public getServerInfo(): {
+    id?: string;
+    name?: string;
+    host: string;
+    port: string;
+  } {
     return {
       id: this.serverId,
       name: this.serverName,

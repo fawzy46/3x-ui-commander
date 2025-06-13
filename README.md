@@ -27,6 +27,7 @@ A Discord bot that automates interactions with multiple 3x-ui REST APIs, allowin
 See [DOCKER.md](DOCKER.md) for complete Docker setup instructions.
 
 **Quick Docker start:**
+
 ```bash
 # Edit .env and servers.config.json with your settings
 
@@ -38,6 +39,7 @@ docker-compose up -d
 
 1. Clone or download this project
 2. Install dependencies:
+
    ```bash
    npm install
    ```
@@ -46,13 +48,14 @@ docker-compose up -d
 
    The bot uses SQLite database for server configuration management. The database will be automatically created on first startup at `./data/servers.db`.
 
-4. Configure your servers:   **Option A: Discord Commands (Recommended)**
+4. Configure your servers: **Option A: Discord Commands (Recommended)**
 
    After starting the bot, use the `/manage-servers add` command to add your servers directly through Discord. This is the most convenient method for ongoing management.
 
    **Option B: Environment Variable Configuration**
 
    Set the `SERVERS_CONFIG` environment variable with a JSON array:
+
    ```env
    DISCORD_TOKEN=your_discord_bot_token_here
    CLIENT_ID=your_discord_application_client_id_here
@@ -60,8 +63,9 @@ docker-compose up -d
    ```
 
    > **Note about `discordServerId`**: This optional field allows you to restrict server management to specific Discord servers. When set, commands for this VPN server will only be accessible from the specified Discord server. To get your Discord server ID, enable Developer Mode in Discord settings, then right-click on your server and select "Copy ID".
-   
+
    Create a `.env` file based on below example:
+
    ```env
    # Discord Bot Configuration
    DISCORD_TOKEN=your_discord_bot_token_here
@@ -75,17 +79,19 @@ docker-compose up -d
    API_PASSWORD=admin
    ```
 
-4. Build the project:
+5. Build the project:
+
    ```bash
    npm run build
    ```
 
-5. Start the bot:
-   ```bash
+6. Start the bot:
+
+   ````bash
    npm start   ```
 
    **Option C: Legacy Single Server Configuration**
-   
+
    Create a `.env` file with single server configuration:
    ```env
    DISCORD_TOKEN=your_discord_bot_token_here
@@ -95,9 +101,9 @@ docker-compose up -d
    API_WEBBASEPATH=/your-web-path
    API_USERNAME=admin
    API_PASSWORD=your_password
-   ```
+   ````
 
-5. Start the bot:
+7. Start the bot:
    ```bash
    npm start
    ```
@@ -110,7 +116,7 @@ The bot uses SQLite database for better performance and reliability. Available c
 # Generate database migrations
 npm run db:generate
 
-# Apply database migrations  
+# Apply database migrations
 npm run db:migrate
 
 # Open Drizzle Studio (web-based database browser)
@@ -127,11 +133,13 @@ For more details, see [DATABASE_GUIDE.md](DATABASE_GUIDE.md)
 ## Development
 
 For development with auto-reload:
+
 ```bash
 npm run dev
 ```
 
 Or with file watching:
+
 ```bash
 npm run watch
 ```
@@ -151,21 +159,27 @@ npm run watch
 ## Available Commands
 
 ### `/list-servers`
+
 List all configured 3x-ui servers and their connection status.
 
 **Options:**
+
 - `test-connection` (optional): Test connection to all servers (default: false)
 
 ### `/list-inbounds`
+
 List all inbounds from 3x-ui servers (Requires Administrator Privilege).
 
 **Options:**
+
 - `server` (optional): Select specific server (shows all servers if not specified)
 
 ### `/add-client`
+
 Add a new client to a 3x-ui inbound on a specific server (Requires Administrator Privilege).
 
 **Options:**
+
 - `server` (required): Select the server to add the client to
 - `inbound-id` (required): The inbound ID to add the client to
 - `email` (required): Client email/username
@@ -175,9 +189,11 @@ Add a new client to a 3x-ui inbound on a specific server (Requires Administrator
 - `enabled` (optional): Enable the client (default: true)
 
 ### `/update-client`
+
 Update an existing client configuration on a specific server (Requires Administrator Privilege).
 
 **Options:**
+
 - `server` (required): Select the server where the client exists
 - `uuid` (required): Client UUID to update
 - `inbound-id` (required): The inbound ID where the client exists
@@ -189,16 +205,18 @@ Update an existing client configuration on a specific server (Requires Administr
 - `reset-traffic` (optional): Reset traffic (1 to reset)
 
 ### `/get-traffic`
+
 Get client traffic information and statistics from one or all servers.
 
 **Options:**
+
 - `server` (optional): Select the server to search (searches all servers if not specified)
 - `email` (optional): Client email to get traffic for
 - `uuid` (optional): Client UUID to get traffic for
 
-*Note: Only User with Administrator Privilage can use the search by email/uuid, other wise the non-Administrator user must be linked to the created user in the 3x-ui panel by using the discord username as email*
+_Note: Only User with Administrator Privilage can use the search by email/uuid, other wise the non-Administrator user must be linked to the created user in the 3x-ui panel by using the discord username as email_
 
-*Note: If neither email nor uuid is provided, it will use your Discord username as the email.*
+_Note: If neither email nor uuid is provided, it will use your Discord username as the email._
 
 ## Multi-Server Features
 
@@ -232,6 +250,7 @@ src/
 ## Error Handling
 
 The bot includes comprehensive error handling for:
+
 - API authentication failures (automatic re-login)
 - Invalid client data
 - Network connectivity issues
@@ -258,6 +277,7 @@ The bot includes comprehensive error handling for:
 This project is licensed under the [GNU Affero General Public License v3.0 (AGPLv3)](https://www.gnu.org/licenses/agpl-3.0.en.html).
 
 **Key Points of AGPLv3:**
+
 - ✅ Freedom to use, modify, and distribute
 - ✅ Requires derivative works to remain open source
 - ✅ Network use counts as distribution (even over a network/API)

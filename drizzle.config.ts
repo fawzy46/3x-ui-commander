@@ -9,5 +9,5 @@ export default defineConfig({
     url: `file:${path.join(process.cwd(), 'data', 'servers.db')}`
   },
   verbose: true,
-  strict: true,
+  strict: true
 });

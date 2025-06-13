@@ -1,4 +1,14 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, PermissionFlagsBits, ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ModalSubmitInteraction } from 'discord.js';
+import {
+  SlashCommandBuilder,
+  ChatInputCommandInteraction,
+  EmbedBuilder,
+  PermissionFlagsBits,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  ActionRowBuilder,
+  ModalSubmitInteraction
+} from 'discord.js';
 import { MultiServerManager } from '../api/MultiServerManager';
 import { ServerConfig } from '../types';
 import { v4 as uuidv4 } from 'uuid';
@@ -10,44 +20,49 @@ export class ManageServersCommand {
     this.data = new SlashCommandBuilder()
       .setName('manage-servers')
       .setDescription('Manage 3x-ui servers (Admin only)')
-      .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)      
-      .addSubcommand(subcommand =>
+      .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+      .addSubcommand((subcommand) =>
         subcommand
           .setName('add')
           .setDescription('Add a new server (opens a form)')
       )
-      .addSubcommand(subcommand =>
+      .addSubcommand((subcommand) =>
         subcommand
           .setName('remove')
           .setDescription('Remove a server')
-          .addStringOption(option =>
-            option.setName('server-id')
+          .addStringOption((option) =>
+            option
+              .setName('server-id')
               .setDescription('Server ID to remove')
               .setRequired(true)
           )
       )
-      .addSubcommand(subcommand =>
+      .addSubcommand((subcommand) =>
         subcommand
           .setName('toggle')
           .setDescription('Enable/disable a server')
-          .addStringOption(option =>
-            option.setName('server-id')
+          .addStringOption((option) =>
+            option
+              .setName('server-id')
               .setDescription('Server ID to toggle')
               .setRequired(true)
           )
-          .addBooleanOption(option =>
-            option.setName('active')
+          .addBooleanOption((option) =>
+            option
+              .setName('active')
               .setDescription('Set server active status')
               .setRequired(true)
           )
       )
-      .addSubcommand(subcommand =>
+      .addSubcommand((subcommand) =>
         subcommand
           .setName('refresh')
           .setDescription('Refresh servers from database')
       );
   }
-  public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+  public async execute(
+    interaction: ChatInputCommandInteraction
+  ): Promise<void> {
     try {
       const subcommand = interaction.options.getSubcommand();
 
@@ -68,13 +83,16 @@ export class ManageServersCommand {
           await this.handleRefresh(interaction);
           break;
         default:
-          await interaction.reply({ content: 'Unknown subcommand', ephemeral: true });
+          await interaction.reply({
+            content: 'Unknown subcommand',
+            ephemeral: true
+          });
       }
     } catch (error: any) {
       console.error('Error in manage-servers command:', error);
 
       const errorEmbed = new EmbedBuilder()
-        .setColor(0xFF0000)
+        .setColor(0xff0000)
         .setTitle('❌ Error')
         .setDescription(error.message || 'An unexpected error occurred')
         .setTimestamp();
@@ -86,7 +104,9 @@ export class ManageServersCommand {
       }
     }
   }
-  private async handleAdd(interaction: ChatInputCommandInteraction): Promise<void> {
+  private async handleAdd(
+    interaction: ChatInputCommandInteraction
+  ): Promise<void> {
     // Create the modal
     const modal = new ModalBuilder()
       .setCustomId('add_server_modal')
@@ -134,20 +154,33 @@ export class ManageServersCommand {
       .setMaxLength(200);
 
     // Create action rows and add inputs
-    const firstActionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(serverIdInput);
-    const secondActionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(serverNameInput);
-    const thirdActionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(hostInput);
-    const fourthActionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(portWebPathInput);
-    const fifthActionRow = new ActionRowBuilder<TextInputBuilder>().addComponents(credentialsInput);
+    const firstActionRow =
+      new ActionRowBuilder<TextInputBuilder>().addComponents(serverIdInput);
+    const secondActionRow =
+      new ActionRowBuilder<TextInputBuilder>().addComponents(serverNameInput);
+    const thirdActionRow =
+      new ActionRowBuilder<TextInputBuilder>().addComponents(hostInput);
+    const fourthActionRow =
+      new ActionRowBuilder<TextInputBuilder>().addComponents(portWebPathInput);
+    const fifthActionRow =
+      new ActionRowBuilder<TextInputBuilder>().addComponents(credentialsInput);
 
     // Add rows to the modal
-    modal.addComponents(firstActionRow, secondActionRow, thirdActionRow, fourthActionRow, fifthActionRow);
+    modal.addComponents(
+      firstActionRow,
+      secondActionRow,
+      thirdActionRow,
+      fourthActionRow,
+      fifthActionRow
+    );
 
     // Show the modal
     await interaction.showModal(modal);
   }
 
-  public async handleModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
+  public async handleModalSubmit(
+    interaction: ModalSubmitInteraction
+  ): Promise<void> {
     if (interaction.customId !== 'add_server_modal') return;
 
     await interaction.deferReply({ ephemeral: true });
@@ -157,19 +190,29 @@ export class ManageServersCommand {
       const id = interaction.fields.getTextInputValue('server_id').trim();
       const name = interaction.fields.getTextInputValue('server_name').trim();
       const host = interaction.fields.getTextInputValue('host').trim();
-      const portWebPath = interaction.fields.getTextInputValue('port_webpath').trim();
-      const credentials = interaction.fields.getTextInputValue('credentials').trim();
+      const portWebPath = interaction.fields
+        .getTextInputValue('port_webpath')
+        .trim();
+      const credentials = interaction.fields
+        .getTextInputValue('credentials')
+        .trim();
 
       // Parse port and webBasePath
-      const [port, webBasePath = ''] = portWebPath.split(',').map(s => s.trim());
+      const [port, webBasePath = ''] = portWebPath
+        .split(',')
+        .map((s) => s.trim());
       if (!port) {
-        throw new Error('Port is required. Format: port,webpath (e.g., 2053,/panel)');
+        throw new Error(
+          'Port is required. Format: port,webpath (e.g., 2053,/panel)'
+        );
       }
 
       // Parse credentials
-      const [username, password] = credentials.split(',').map(s => s.trim());
+      const [username, password] = credentials.split(',').map((s) => s.trim());
       if (!username || !password) {
-        throw new Error('Both username and password are required. Format: username,password');
+        throw new Error(
+          'Both username and password are required. Format: username,password'
+        );
       }
 
       const guildId = interaction.guildId;
@@ -208,7 +251,7 @@ export class ManageServersCommand {
       await this.serverManager.addNewServer(serverConfig);
 
       const successEmbed = new EmbedBuilder()
-        .setColor(0x00FF00)
+        .setColor(0x00ff00)
         .setTitle('✅ Server Added Successfully')
         .addFields(
           { name: 'ID', value: id, inline: true },
@@ -218,7 +261,9 @@ export class ManageServersCommand {
           { name: 'Web Path', value: webBasePath || '/', inline: true },
           { name: 'Discord Server', value: guildId, inline: true }
         )
-        .setFooter({ text: 'Server is now available for use with other commands' })
+        .setFooter({
+          text: 'Server is now available for use with other commands'
+        })
         .setTimestamp();
 
       await interaction.editReply({ embeds: [successEmbed] });
@@ -226,33 +271,43 @@ export class ManageServersCommand {
       console.error('Error adding server:', error);
 
       const errorEmbed = new EmbedBuilder()
-        .setColor(0xFF0000)
+        .setColor(0xff0000)
         .setTitle('❌ Failed to Add Server')
         .setDescription(error.message || 'An unexpected error occurred')
-        .addFields(
-          { name: 'Tip', value: 'Make sure all fields are filled correctly:\n• Server ID: Unique identifier\n• Host: Include http:// or https://\n• Port,WebPath: e.g., 2053,/panel\n• Username,Password: e.g., admin,mypass' }
-        )
+        .addFields({
+          name: 'Tip',
+          value:
+            'Make sure all fields are filled correctly:\n• Server ID: Unique identifier\n• Host: Include http:// or https://\n• Port,WebPath: e.g., 2053,/panel\n• Username,Password: e.g., admin,mypass'
+        })
         .setTimestamp();
 
       await interaction.editReply({ embeds: [errorEmbed] });
     }
   }
-  private async handleRemove(interaction: ChatInputCommandInteraction): Promise<void> {
+  private async handleRemove(
+    interaction: ChatInputCommandInteraction
+  ): Promise<void> {
     const serverId = interaction.options.getString('server-id', true);
-    const discordServerId = interaction.guild?.id;    if (!discordServerId) {
+    const discordServerId = interaction.guild?.id;
+    if (!discordServerId) {
       throw new Error('This command can only be used in a Discord server');
     }
 
-    const server = this.serverManager.validateServerAccess(serverId, discordServerId);
-    
+    const server = this.serverManager.validateServerAccess(
+      serverId,
+      discordServerId
+    );
+
     if (!server) {
-      throw new Error(`Server with ID '${serverId}' not found or doesn't belong to this Discord server`);
+      throw new Error(
+        `Server with ID '${serverId}' not found or doesn't belong to this Discord server`
+      );
     }
 
     await this.serverManager.deleteExistingServer(serverId);
 
     const successEmbed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle('✅ Server Removed Successfully')
       .addFields(
         { name: 'ID', value: serverId, inline: true },
@@ -263,7 +318,9 @@ export class ManageServersCommand {
     await interaction.editReply({ embeds: [successEmbed] });
   }
 
-  private async handleToggle(interaction: ChatInputCommandInteraction): Promise<void> {
+  private async handleToggle(
+    interaction: ChatInputCommandInteraction
+  ): Promise<void> {
     const serverId = interaction.options.getString('server-id', true);
     const active = interaction.options.getBoolean('active', true);
     const discordServerId = interaction.guild?.id;
@@ -271,49 +328,63 @@ export class ManageServersCommand {
     if (!discordServerId) {
       throw new Error('This command can only be used in a Discord server');
     }
-    const server = this.serverManager.validateServerAccess(serverId, discordServerId);
-    
+    const server = this.serverManager.validateServerAccess(
+      serverId,
+      discordServerId
+    );
+
     if (!server) {
-      throw new Error(`Server with ID '${serverId}' not found or doesn't belong to this Discord server`);
+      throw new Error(
+        `Server with ID '${serverId}' not found or doesn't belong to this Discord server`
+      );
     }
 
     await this.serverManager.setServerActiveStatus(serverId, active);
 
     const successEmbed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle('✅ Server Status Updated')
       .addFields(
         { name: 'ID', value: serverId, inline: true },
         { name: 'Name', value: server.name, inline: true },
-        { name: 'Status', value: active ? '✅ Active' : '❌ Inactive', inline: true }
+        {
+          name: 'Status',
+          value: active ? '✅ Active' : '❌ Inactive',
+          inline: true
+        }
       )
       .setTimestamp();
 
     await interaction.editReply({ embeds: [successEmbed] });
   }
 
-  private async handleRefresh(interaction: ChatInputCommandInteraction): Promise<void> {
+  private async handleRefresh(
+    interaction: ChatInputCommandInteraction
+  ): Promise<void> {
     const discordServerId = interaction.guild?.id;
-    
+
     if (!discordServerId) {
       const errorEmbed = new EmbedBuilder()
-        .setColor(0xFF0000)
+        .setColor(0xff0000)
         .setTitle('❌ Error')
         .setDescription('Failed to refresh servers, unknown Discord server ID')
         .setTimestamp();
-      
+
       await interaction.editReply({ embeds: [errorEmbed] });
       return;
     }
 
     await this.serverManager.refreshServersForDiscord(discordServerId);
 
-    const servers = this.serverManager.getServersByDiscordIdCached(discordServerId);
+    const servers =
+      this.serverManager.getServersByDiscordIdCached(discordServerId);
 
     const successEmbed = new EmbedBuilder()
-      .setColor(0x00FF00)
+      .setColor(0x00ff00)
       .setTitle('✅ Servers Refreshed')
-      .setDescription(`Reloaded ${servers.length} server(s) from database for this Discord server`)
+      .setDescription(
+        `Reloaded ${servers.length} server(s) from database for this Discord server`
+      )
       .setTimestamp();
 
     await interaction.editReply({ embeds: [successEmbed] });

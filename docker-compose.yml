@@ -9,7 +9,7 @@ services:
       # Discord Configuration
       - DISCORD_TOKEN=${DISCORD_TOKEN}
       - CLIENT_ID=${CLIENT_ID}
-      
+
       # Server Configuration (if using environment variables instead of config file)
       # - API_HOST=${API_HOST}
       # - API_PORT=${API_PORT}
@@ -19,7 +19,6 @@ services:
     volumes:
       # Mount the servers config file
       - ./servers.config.json:/app/servers.config.json:ro
-      
+
       # Mount logs directory (optional)
       - ./logs:/app/logs
-    

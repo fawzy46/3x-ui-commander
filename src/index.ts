@@ -1,4 +1,10 @@
-import { Client, GatewayIntentBits, Collection, REST, Routes } from 'discord.js';
+import {
+  Client,
+  GatewayIntentBits,
+  Collection,
+  REST,
+  Routes
+} from 'discord.js';
 import { config } from 'dotenv';
 import { MultiServerManager } from './api/MultiServerManager';
 import { AddClientCommand } from './commands/AddClientCommand';
@@ -21,26 +27,24 @@ class XUIBot {
   private serverManager: MultiServerManager;
   constructor() {
     this.client = new Client({
-      intents: [
-        GatewayIntentBits.Guilds,
-      ]
+      intents: [GatewayIntentBits.Guilds]
     });
 
     this.commands = new Collection();
     this.serverManager = new MultiServerManager();
-    
+
     this.setupEventHandlers();
   }
 
   private async initializeBot() {
     console.log('🚀 Initializing 3x-ui Discord Bot...');
-    
+
     // Initialize the server manager with database
     await this.serverManager.initialize();
-    
+
     // Setup commands after server manager is initialized
     this.setupCommands();
-    
+
     console.log('✅ Bot initialization completed');
   }
 
@@ -54,7 +58,7 @@ class XUIBot {
       new ManageServersCommand(this.serverManager)
     ];
 
-    commands.forEach(command => {
+    commands.forEach((command) => {
       this.commands.set(command.data.name, command);
     });
   }
@@ -73,26 +77,38 @@ class XUIBot {
         } else if (interaction.isModalSubmit()) {
           // Handle modal submissions
           if (interaction.customId === 'add_server_modal') {
-            const manageServersCommand = this.commands.get('manage-servers') as any;
-            if (manageServersCommand && manageServersCommand.handleModalSubmit) {
+            const manageServersCommand = this.commands.get(
+              'manage-servers'
+            ) as any;
+            if (
+              manageServersCommand &&
+              manageServersCommand.handleModalSubmit
+            ) {
               await manageServersCommand.handleModalSubmit(interaction);
             }
           }
         }
       } catch (error) {
         console.error('Error handling interaction:', error);
-        
-        const errorMessage = 'There was an error while processing this interaction!';
-        
+
+        const errorMessage =
+          'There was an error while processing this interaction!';
+
         if (interaction.isChatInputCommand()) {
           if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: errorMessage, ephemeral: true });
+            await interaction.followUp({
+              content: errorMessage,
+              ephemeral: true
+            });
           } else {
             await interaction.reply({ content: errorMessage, ephemeral: true });
           }
         } else if (interaction.isModalSubmit()) {
           if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({ content: errorMessage, ephemeral: true });
+            await interaction.followUp({
+              content: errorMessage,
+              ephemeral: true
+            });
           } else {
             await interaction.reply({ content: errorMessage, ephemeral: true });
           }
@@ -104,10 +120,10 @@ class XUIBot {
     try {
       // Initialize the bot with database
       await this.initializeBot();
-      
+
       // Register slash commands
       await this.registerCommands();
-      
+
       // Start the bot
       await this.client.login(process.env.DISCORD_TOKEN);
     } catch (error) {
@@ -118,20 +134,23 @@ class XUIBot {
 
   private async registerCommands() {
     if (!process.env.DISCORD_TOKEN || !process.env.CLIENT_ID) {
-      throw new Error('Missing DISCORD_TOKEN or CLIENT_ID in environment variables');
+      throw new Error(
+        'Missing DISCORD_TOKEN or CLIENT_ID in environment variables'
+      );
     }
 
     const rest = new REST().setToken(process.env.DISCORD_TOKEN);
-    const commandsData = Array.from(this.commands.values()).map(command => command.data.toJSON());
+    const commandsData = Array.from(this.commands.values()).map((command) =>
+      command.data.toJSON()
+    );
     console.log('Registering commands:', commandsData);
 
     try {
       console.log('Started refreshing application (/) commands.');
 
-      await rest.put(
-        Routes.applicationCommands(process.env.CLIENT_ID),
-        { body: commandsData },
-      );
+      await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), {
+        body: commandsData
+      });
 
       console.log('Successfully reloaded application (/) commands.');
     } catch (error) {

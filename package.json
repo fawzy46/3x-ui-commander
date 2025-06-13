@@ -9,7 +9,7 @@
     "dev": "ts-node src/index.ts",
     "watch": "nodemon --exec ts-node src/index.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate", 
+    "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -36,6 +36,7 @@
   "devDependencies": {
     "@types/node": "^22.15.30",
     "nodemon": "^3.1.10",
+    "prettier": "^3.5.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }

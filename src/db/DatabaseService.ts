@@ -4,7 +4,8 @@ import { ServerConfig } from '../types';
 import * as fs from 'fs';
 import * as path from 'path';
 
-export class DatabaseService {  /**
+export class DatabaseService {
+  /**
    * Initialize the database and run migrations
    */
   public async initialize(): Promise<void> {
@@ -17,7 +18,7 @@ export class DatabaseService {  /**
 
       // Create tables if they don't exist
       await this.createTables();
-      
+
       console.log('✅ Database initialized successfully');
     } catch (error) {
       console.error('❌ Failed to initialize database:', error);
@@ -54,7 +55,10 @@ export class DatabaseService {  /**
    * Get all active servers
    */
   public async getActiveServers(): Promise<ServerConfig[]> {
-    const servers = await db.select().from(schema.servers).where(eq(schema.servers.isActive, true));
+    const servers = await db
+      .select()
+      .from(schema.servers)
+      .where(eq(schema.servers.isActive, true));
     return servers.map(this.mapToServerConfig);
   }
 
@@ -70,27 +74,37 @@ export class DatabaseService {  /**
    * Get server by ID
    */
   public async getServerById(id: string): Promise<ServerConfig | null> {
-    const servers = await db.select().from(schema.servers).where(eq(schema.servers.id, id));
+    const servers = await db
+      .select()
+      .from(schema.servers)
+      .where(eq(schema.servers.id, id));
     return servers.length > 0 ? this.mapToServerConfig(servers[0]) : null;
   }
 
   /**
    * Get servers by Discord server ID
    */
-  public async getServersByDiscordId(discordServerId: string): Promise<ServerConfig[]> {
-    const servers = await db.select().from(schema.servers).where(
-      and(
-        eq(schema.servers.discordServerId, discordServerId),
-        eq(schema.servers.isActive, true)
-      )
-    );
+  public async getServersByDiscordId(
+    discordServerId: string
+  ): Promise<ServerConfig[]> {
+    const servers = await db
+      .select()
+      .from(schema.servers)
+      .where(
+        and(
+          eq(schema.servers.discordServerId, discordServerId),
+          eq(schema.servers.isActive, true)
+        )
+      );
     return servers.map(this.mapToServerConfig);
   }
 
   /**
    * Get first server by Discord server ID
    */
-  public async getServerByDiscordId(discordServerId: string): Promise<ServerConfig | null> {
+  public async getServerByDiscordId(
+    discordServerId: string
+  ): Promise<ServerConfig | null> {
     const servers = await this.getServersByDiscordId(discordServerId);
     return servers.length > 0 ? servers[0] : null;
   }
@@ -99,19 +113,23 @@ export class DatabaseService {  /**
    * Filter servers by Discord server ID
    * Returns servers associated with the Discord server ID or servers with no Discord ID set
    */
-  public async filterServersByDiscordId(discordServerId: string | null): Promise<ServerConfig[]> {
+  public async filterServersByDiscordId(
+    discordServerId: string | null
+  ): Promise<ServerConfig[]> {
     if (!discordServerId) {
       return this.getActiveServers();
     }
 
-    const servers = await db.select().from(schema.servers).where(
-      and(
-        eq(schema.servers.isActive, true)
-      )
-    );
+    const servers = await db
+      .select()
+      .from(schema.servers)
+      .where(and(eq(schema.servers.isActive, true)));
 
     return servers
-      .filter(server => !server.discordServerId || server.discordServerId === discordServerId)
+      .filter(
+        (server) =>
+          !server.discordServerId || server.discordServerId === discordServerId
+      )
       .map(this.mapToServerConfig);
   }
 
@@ -131,19 +149,23 @@ export class DatabaseService {  /**
       isActive: config.isActive,
       discordServerId: config.discordServerId,
       createdAt: now,
-      updatedAt: now,
+      updatedAt: now
     });
   }
 
   /**
    * Update an existing server
    */
-  public async updateServer(id: string, config: Partial<ServerConfig>): Promise<void> {
+  public async updateServer(
+    id: string,
+    config: Partial<ServerConfig>
+  ): Promise<void> {
     const now = new Date();
-    await db.update(schema.servers)
+    await db
+      .update(schema.servers)
       .set({
         ...config,
-        updatedAt: now,
+        updatedAt: now
       })
       .where(eq(schema.servers.id, id));
   }
@@ -164,7 +186,9 @@ export class DatabaseService {  /**
   /**
    * Map database row to ServerConfig interface
    */
-  private mapToServerConfig(server: typeof schema.servers.$inferSelect): ServerConfig {
+  private mapToServerConfig(
+    server: typeof schema.servers.$inferSelect
+  ): ServerConfig {
     return {
       id: server.id,
       name: server.name,
@@ -174,7 +198,7 @@ export class DatabaseService {  /**
       username: server.username,
       password: server.password,
       isActive: server.isActive,
-      discordServerId: server.discordServerId || undefined,
+      discordServerId: server.discordServerId || undefined
     };
   }
 }

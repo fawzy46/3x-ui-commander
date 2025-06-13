@@ -1,53 +1,69 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction, EmbedBuilder, PermissionFlagsBits } from 'discord.js';
+import {
+  SlashCommandBuilder,
+  ChatInputCommandInteraction,
+  EmbedBuilder,
+  PermissionFlagsBits
+} from 'discord.js';
 import { MultiServerManager } from '../api/MultiServerManager';
 import { Client } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
 export class AddClientCommand {
   public data;
-  constructor(private serverManager: MultiServerManager) {    
+  constructor(private serverManager: MultiServerManager) {
     this.data = new SlashCommandBuilder()
       .setName('add-client')
       .setDescription('Add a new client to a 3x-ui inbound')
-      .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)      
-      .addStringOption(option =>
-        option.setName('server')
-          .setDescription('Server ID to add the client to (use /list-servers to see available servers)')
+      .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+      .addStringOption((option) =>
+        option
+          .setName('server')
+          .setDescription(
+            'Server ID to add the client to (use /list-servers to see available servers)'
+          )
           .setRequired(true)
       )
-      .addIntegerOption(option =>
-        option.setName('inbound-id')
+      .addIntegerOption((option) =>
+        option
+          .setName('inbound-id')
           .setDescription('The inbound ID to add the client to')
           .setRequired(true)
       )
-      .addStringOption(option =>
-        option.setName('email')
+      .addStringOption((option) =>
+        option
+          .setName('email')
           .setDescription('Client email/username')
           .setRequired(true)
       )
-      .addIntegerOption(option =>
-        option.setName('total-gb')
+      .addIntegerOption((option) =>
+        option
+          .setName('total-gb')
           .setDescription('Total GB limit (0 for unlimited)')
           .setRequired(false)
       )
-      .addIntegerOption(option =>
-        option.setName('expiry-days')
+      .addIntegerOption((option) =>
+        option
+          .setName('expiry-days')
           .setDescription('Days until expiry (0 for no expiry)')
           .setRequired(false)
       )
-      .addIntegerOption(option =>
-        option.setName('limit-ip')
+      .addIntegerOption((option) =>
+        option
+          .setName('limit-ip')
           .setDescription('IP connection limit (0 for unlimited)')
           .setRequired(false)
       )
-      .addBooleanOption(option =>
-        option.setName('enabled')
+      .addBooleanOption((option) =>
+        option
+          .setName('enabled')
           .setDescription('Enable the client (default: true)')
           .setRequired(false)
       );
   }
-    
-  public async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+
+  public async execute(
+    interaction: ChatInputCommandInteraction
+  ): Promise<void> {
     await interaction.deferReply({ ephemeral: true });
 
     try {
@@ -59,14 +75,19 @@ export class AddClientCommand {
       const expiryDays = interaction.options.getInteger('expiry-days') || 0;
       const limitIp = interaction.options.getInteger('limit-ip') || 0;
       const enabled = interaction.options.getBoolean('enabled') ?? true;
-      
-      const serverInfo = this.serverManager.validateServerAccess(serverId, guildId);
-      
+
+      const serverInfo = this.serverManager.validateServerAccess(
+        serverId,
+        guildId
+      );
+
       if (!serverInfo) {
         const errorEmbed = new EmbedBuilder()
-          .setColor(0xFF0000)
+          .setColor(0xff0000)
           .setTitle('❌ Server Not Found')
-          .setDescription(`Server with ID '${serverId}' not found or not accessible from this Discord server`)
+          .setDescription(
+            `Server with ID '${serverId}' not found or not accessible from this Discord server`
+          )
           .setTimestamp();
 
         await interaction.editReply({ embeds: [errorEmbed] });
@@ -74,7 +95,8 @@ export class AddClientCommand {
       }
 
       // Calculate expiry time
-      const expiryTime = expiryDays > 0 ? Date.now() + (expiryDays * 24 * 60 * 60 * 1000) : 0;
+      const expiryTime =
+        expiryDays > 0 ? Date.now() + expiryDays * 24 * 60 * 60 * 1000 : 0;
 
       // Create client object
       const client: Client = {
@@ -91,41 +113,55 @@ export class AddClientCommand {
       };
 
       // Add client via API
-      const response = await this.serverManager.addClient(serverId, inboundId, client);
+      const response = await this.serverManager.addClient(
+        serverId,
+        inboundId,
+        client
+      );
 
       if (response.success) {
         const embed = new EmbedBuilder()
-          .setColor(0x00FF00)
+          .setColor(0x00ff00)
           .setTitle('✅ Client Added Successfully')
           .addFields(
             { name: 'Server', value: serverInfo.name, inline: true },
             { name: 'Email', value: email, inline: true },
             { name: 'Inbound ID', value: inboundId.toString(), inline: true },
             { name: 'UUID', value: client.id, inline: true },
-            { name: 'Total GB', value: totalGB === 0 ? 'Unlimited' : `${totalGB} GB`, inline: true },
-            { name: 'Expiry', value: expiryDays === 0 ? 'No expiry' : `${expiryDays} days`, inline: true },
-            { name: 'Status', value: enabled ? 'Enabled' : 'Disabled', inline: true }
+            {
+              name: 'Total GB',
+              value: totalGB === 0 ? 'Unlimited' : `${totalGB} GB`,
+              inline: true
+            },
+            {
+              name: 'Expiry',
+              value: expiryDays === 0 ? 'No expiry' : `${expiryDays} days`,
+              inline: true
+            },
+            {
+              name: 'Status',
+              value: enabled ? 'Enabled' : 'Disabled',
+              inline: true
+            }
           )
           .setTimestamp();
 
         await interaction.editReply({ embeds: [embed] });
       } else {
         const errorEmbed = new EmbedBuilder()
-          .setColor(0xFF0000)
+          .setColor(0xff0000)
           .setTitle('❌ Failed to Add Client')
           .setDescription(response.msg || 'Unknown error occurred')
-          .addFields(
-            { name: 'Server', value: serverInfo.name, inline: true }
-          )
+          .addFields({ name: 'Server', value: serverInfo.name, inline: true })
           .setTimestamp();
 
         await interaction.editReply({ embeds: [errorEmbed] });
       }
     } catch (error: any) {
       console.error('Error in add-client command:', error);
-      
+
       const errorEmbed = new EmbedBuilder()
-        .setColor(0xFF0000)
+        .setColor(0xff0000)
         .setTitle('❌ Error')
         .setDescription(error.message || 'An unexpected error occurred')
         .setTimestamp();
