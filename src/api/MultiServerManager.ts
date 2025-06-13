@@ -36,11 +36,10 @@ export class MultiServerManager {
   }
 
   /**
-   * Load server configurations from database with fallback to environment variables
+   * Load server configurations from database
    */
   private async loadServerConfigurations(): Promise<void> {
     try {
-      // First try to load from database
       const servers = await this.dbService.getActiveServers();
 
       if (servers.length > 0) {
@@ -55,75 +54,15 @@ export class MultiServerManager {
         console.log(
           `✅ Loaded ${this.getTotalServerCount()} active server(s) from database`
         );
-        return;
+      } else {
+        console.log(
+          '� No servers configured. Use the /manage-servers command to add servers.'
+        );
       }
     } catch (error) {
       console.error('❌ Failed to load servers from database:', error);
-    }
-
-    // Fallback to environment variables approach
-    const serversData = process.env.SERVERS_CONFIG;
-
-    if (serversData) {
-      try {
-        const servers: ServerConfig[] = JSON.parse(serversData);
-        console.log(
-          '🔍 Loading server configurations from SERVERS_CONFIG environment variable'
-        );
-
-        for (const server of servers) {
-          if (server.isActive) {
-            await this.dbService.addServer(server);
-            this.addServer(server);
-          }
-        }
-        if (this.getTotalServerCount() > 0) {
-          console.log(
-            `✅ Loaded ${this.getTotalServerCount()} active server(s) from environment variable and saved to database`
-          );
-          return;
-        }
-      } catch (error) {
-        console.error(
-          '❌ Failed to parse SERVERS_CONFIG environment variable:',
-          error
-        );
-      }
-    }
-
-    // Final fallback to single server configuration for backward compatibility
-    if (
-      process.env.API_HOST &&
-      process.env.API_USERNAME &&
-      process.env.API_PASSWORD
-    ) {
       console.log(
-        '🔍 Using legacy single server configuration from environment variables'
-      );
-      const singleServer: ServerConfig = {
-        id: 'default',
-        name: 'Default Server',
-        host: process.env.API_HOST,
-        port: process.env.API_PORT || '2053',
-        webBasePath: process.env.API_WEBBASEPATH || '',
-        username: process.env.API_USERNAME,
-        password: process.env.API_PASSWORD,
-        isActive: true
-      };
-
-      try {
-        await this.dbService.addServer(singleServer);
-      } catch (error) {
-        console.warn('⚠️ Failed to save legacy server to database:', error);
-      }
-
-      this.addServer(singleServer);
-      console.log(
-        `✅ Loaded ${this.getTotalServerCount()} active server(s) from legacy configuration`
-      );
-    } else {
-      console.log(
-        '📋 No servers configured. Use the /manage-servers command to add servers.'
+        '📋 No servers available. Use the /manage-servers command to add servers.'
       );
     }
   }
@@ -340,9 +279,7 @@ export class MultiServerManager {
   /**
    * Search for client across all servers by email
    */
-  public async findClientByEmail(
-    email: string
-  ): Promise<
+  public async findClientByEmail(email: string): Promise<
     Array<{
       serverId: string;
       serverName: string;
@@ -373,9 +310,7 @@ export class MultiServerManager {
   /**
    * Search for client across all servers by UUID
    */
-  public async findClientByUUID(
-    uuid: string
-  ): Promise<
+  public async findClientByUUID(uuid: string): Promise<
     Array<{
       serverId: string;
       serverName: string;

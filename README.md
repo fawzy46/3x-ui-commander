@@ -48,35 +48,19 @@ docker-compose up -d
 
    The bot uses SQLite database for server configuration management. The database will be automatically created on first startup at `./data/servers.db`.
 
-4. Configure your servers: **Option A: Discord Commands (Recommended)**
+4. **Configure your servers using Discord commands:**
 
-   After starting the bot, use the `/manage-servers add` command to add your servers directly through Discord. This is the most convenient method for ongoing management.
+   After starting the bot, use the `/manage-servers add` command to add your servers directly through Discord. This is the recommended method for server management.
 
-   **Option B: Environment Variable Configuration**
-
-   Set the `SERVERS_CONFIG` environment variable with a JSON array:
-
-   ```env
-   DISCORD_TOKEN=your_discord_bot_token_here
-   CLIENT_ID=your_discord_application_client_id_here
-   SERVERS_CONFIG=[{"id":"server1","name":"Primary Server","host":"http://your-server1.com","port":"2053","webBasePath":"/path1","username":"admin","password":"password1","isActive":true,"discordServerId":"123456789012345678"}]
-   ```
-
-   > **Note about `discordServerId`**: This optional field allows you to restrict server management to specific Discord servers. When set, commands for this VPN server will only be accessible from the specified Discord server. To get your Discord server ID, enable Developer Mode in Discord settings, then right-click on your server and select "Copy ID".
-
-   Create a `.env` file based on below example:
+   Create a `.env` file with Discord bot configuration:
 
    ```env
    # Discord Bot Configuration
    DISCORD_TOKEN=your_discord_bot_token_here
    CLIENT_ID=your_discord_application_client_id_here
 
-   # Single 3x-ui API Configuration
-   API_HOST=localhost
-   API_PORT=2053
-   API_WEBBASEPATH=
-   API_USERNAME=admin
-   API_PASSWORD=admin
+   # Note: Server configurations are managed through Discord commands
+   # Use /manage-servers command to add your 3x-ui servers
    ```
 
 5. Build the project:
@@ -87,26 +71,13 @@ docker-compose up -d
 
 6. Start the bot:
 
-   ````bash
-   npm start   ```
-
-   **Option C: Legacy Single Server Configuration**
-
-   Create a `.env` file with single server configuration:
-   ```env
-   DISCORD_TOKEN=your_discord_bot_token_here
-   CLIENT_ID=your_discord_application_client_id_here
-   API_HOST=http://your-server.com
-   API_PORT=2053
-   API_WEBBASEPATH=/your-web-path
-   API_USERNAME=admin
-   API_PASSWORD=your_password
-   ````
-
-7. Start the bot:
    ```bash
    npm start
    ```
+
+7. Add your servers:
+
+   Use the `/manage-servers add` command in Discord to add your 3x-ui servers. The bot will guide you through the configuration process.
 
 ## Database Management
 
@@ -157,6 +128,18 @@ npm run watch
 9. Use the generated URL to invite the bot to your server
 
 ## Available Commands
+
+### `/manage-servers`
+
+Manage server configurations (Requires Administrator Privilege).
+
+**Subcommands:**
+
+- `add`: Add a new 3x-ui server configuration
+- `list`: List all configured servers
+- `edit`: Edit an existing server configuration
+- `delete`: Remove a server configuration
+- `test`: Test connection to servers
 
 ### `/list-servers`
 
