@@ -476,7 +476,8 @@ export class MultiServerManager {
    * Refresh servers for a specific Discord server only
    */
   public async refreshServersForDiscord(discordServerId: string): Promise<void> {
-    if (!this.initialized) await this.initialize();
+    if (!this.initialized) 
+      await this.initialize();
     
     // Remove current Discord server entries from cache
     const currentDiscordServers = this.serversByDiscord.get(discordServerId) || [];

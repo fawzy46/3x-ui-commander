@@ -262,6 +262,7 @@ export class ManageServersCommand {
 
     await interaction.editReply({ embeds: [successEmbed] });
   }
+
   private async handleToggle(interaction: ChatInputCommandInteraction): Promise<void> {
     const serverId = interaction.options.getString('server-id', true);
     const active = interaction.options.getBoolean('active', true);
@@ -290,6 +291,7 @@ export class ManageServersCommand {
 
     await interaction.editReply({ embeds: [successEmbed] });
   }
+
   private async handleRefresh(interaction: ChatInputCommandInteraction): Promise<void> {
     const discordServerId = interaction.guild?.id;
     
@@ -297,12 +299,14 @@ export class ManageServersCommand {
       const errorEmbed = new EmbedBuilder()
         .setColor(0xFF0000)
         .setTitle('❌ Error')
-        .setDescription('This command can only be used in a Discord server')
+        .setDescription('Failed to refresh servers, unknown Discord server ID')
         .setTimestamp();
       
       await interaction.editReply({ embeds: [errorEmbed] });
       return;
-    }    await this.serverManager.refreshServersForDiscord(discordServerId);
+    }
+
+    await this.serverManager.refreshServersForDiscord(discordServerId);
 
     const servers = this.serverManager.getServersByDiscordIdCached(discordServerId);
 
